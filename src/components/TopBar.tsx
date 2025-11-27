@@ -6,9 +6,11 @@ interface TopBarProps {
   matchId?: string;
   onLeaderboardClick?: () => void;
   onHomeClick?: () => void;
+  timeLeft?: number;
+  formatTime?: (seconds: number) => string;
 }
 
-export function TopBar({ title, matchId, onLeaderboardClick, onHomeClick }: TopBarProps) {
+export function TopBar({ title, matchId, onLeaderboardClick, onHomeClick, timeLeft, formatTime }: TopBarProps) {
   return (
     <div
       className="w-full px-6 py-4 bg-white shadow-lg rounded-b-3xl flex items-center justify-between"
@@ -40,12 +42,20 @@ export function TopBar({ title, matchId, onLeaderboardClick, onHomeClick }: TopB
         )}
       </div>
 
-      <button
-        onClick={onLeaderboardClick}
-        className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD93D] to-[#FFC72D] flex items-center justify-center shadow-lg hover:scale-110 transform transition-all"
-      >
-        <Trophy className="text-white" size={24} />
-      </button>
+      <div className="flex items-center gap-4">
+        {timeLeft !== undefined && formatTime && (
+          <div className="bg-white text-black rounded-2xl px-4 py-2 flex flex-col items-center gap-0.5 shadow-lg border-2 border-slate-300">
+            <div className="text-xs uppercase tracking-wider text-slate-600">⏳ Цаг</div>
+            <div className="text-2xl font-mono font-bold text-black">{formatTime(timeLeft)}</div>
+          </div>
+        )}
+        <button
+          onClick={onLeaderboardClick}
+          className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD93D] to-[#FFC72D] flex items-center justify-center shadow-lg hover:scale-110 transform transition-all"
+        >
+          <Trophy className="text-white" size={24} />
+        </button>
+      </div>
     </div>
   );
 }
