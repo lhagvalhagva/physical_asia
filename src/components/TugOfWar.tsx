@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import * as THREE from 'three';
 import { PlayfulButton } from './PlayfulButton';
 import { PlayerCard } from './PlayerCard';
 import { TopBar } from './TopBar';
@@ -22,9 +25,10 @@ interface TugOfWarProps {
 export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWarProps) {
   const [countdown, setCountdown] = useState<number | 'GO!' | null>(3);
   const [gameStarted, setGameStarted] = useState(false);
-  const [clickCount, setClickCount] = useState(0);
-  const [ropePosition, setRopePosition] = useState(0); // -50 to 50
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [holdTime, setHoldTime] = useState(0);
+  const [totemBalance, setTotemBalance] = useState(0); // -50 to 50, 0 = balanced
+  const [timeLeft, setTimeLeft] = useState(60);
+  const totemRef = useRef<THREE.Group>(null);
 
   // Countdown logic
   useEffect(() => {
@@ -65,28 +69,69 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
     return () => clearInterval(timer);
   }, [gameStarted, timeLeft]);
 
-  // Simulate opponent clicks
+  // Hold time counter
   useEffect(() => {
     if (!gameStarted) return;
 
     const interval = setInterval(() => {
-      const opponentPull = Math.random() * 0.5;
-      setRopePosition((prev) => Math.max(-50, Math.min(50, prev - opponentPull)));
-    }, 500);
+      setHoldTime((prev) => prev + 0.1);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [gameStarted]);
 
-  const handleClick = () => {
+  // Three.js totem animation
+  useEffect(() => {
+    if (!gameStarted || !totemRef.current) return;
+
+    const animate = () => {
+      if (totemRef.current) {
+        // Totem tilt based on balance
+        const tiltAngle = (totemBalance / 50) * Math.PI / 6; // Max 30 degrees
+        totemRef.current.rotation.z = tiltAngle;
+        
+        // Slight shake when unbalanced
+        if (Math.abs(totemBalance) > 30) {
+          totemRef.current.rotation.x = Math.sin(Date.now() * 0.01) * 0.05;
+          totemRef.current.rotation.y = Math.cos(Date.now() * 0.01) * 0.05;
+        }
+      }
+    };
+
+    const interval = setInterval(animate, 16); // ~60fps
+    return () => clearInterval(interval);
+  }, [gameStarted, totemBalance]);
+
+  // Natural balance drift and opponent effects
+  useEffect(() => {
     if (!gameStarted) return;
 
-    setClickCount((prev) => prev + 1);
-    setRopePosition((prev) => {
-      const newPos = Math.max(-50, Math.min(50, prev + 1));
-      if (newPos >= 50) {
-        endGame();
-      }
-      return newPos;
+    const interval = setInterval(() => {
+      // Natural drift towards imbalance
+      const drift = (Math.random() - 0.5) * 0.8;
+      // Opponent effects
+      const opponentEffect = Math.random() * 0.6;
+      
+      setTotemBalance((prev) => {
+        const newBalance = Math.max(-50, Math.min(50, prev + drift + opponentEffect));
+        // Game over if too unbalanced
+        if (Math.abs(newBalance) >= 50) {
+          endGame();
+        }
+        return newBalance;
+      });
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [gameStarted]);
+
+  const handleBalance = () => {
+    if (!gameStarted) return;
+
+    // Player action to balance the totem
+    setTotemBalance((prev) => {
+      const correction = prev > 0 ? -2 : 2;
+      return Math.max(-50, Math.min(50, prev + correction));
     });
   };
 
@@ -94,7 +139,9 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
     setGameStarted(false);
     const updatedPlayers = players.map((player, index) => ({
       ...player,
-      score: index === 0 ? clickCount * 10 + (ropePosition > 0 ? 500 : 0) : Math.floor(Math.random() * 800),
+      score: index === 0 
+        ? Math.floor(holdTime * 10) + (Math.abs(totemBalance) < 10 ? 500 : 0)
+        : Math.floor(Math.random() * 1200),
     }));
     setTimeout(() => onGameEnd(updatedPlayers), 1000);
   };
@@ -104,7 +151,7 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
   return (
     <div className="min-h-screen flex flex-col">
       <TopBar
-        title="⚔️ Tug of War"
+        title="🗿 Stone Totem Endurance"
         matchId="12345"
         onHomeClick={onHome}
         onLeaderboardClick={onLeaderboard}
@@ -112,9 +159,9 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
 
       {countdown !== null && <CountdownNumber number={countdown} />}
 
-      <div className="flex-1 flex flex-col p-6">
-        {/* Other players */}
-        <div className={`mb-6 ${otherPlayers.length === 3 ? 'grid grid-cols-3 gap-4' : otherPlayers.length === 2 ? 'grid grid-cols-2 gap-4' : ''}`}>
+      <div className="flex-1 flex flex-col p-2 md:p-4">
+        {/* Other players - Compact */}
+        <div className={`mb-2 ${otherPlayers.length === 3 ? 'grid grid-cols-3 gap-2' : otherPlayers.length === 2 ? 'grid grid-cols-2 gap-2' : ''}`}>
           {otherPlayers.map((player) => (
             <PlayerCard
               key={player.name}
@@ -127,87 +174,145 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
           ))}
         </div>
 
-        {/* Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-8">
-          {/* Timer */}
-          <div className="text-center">
-            <div className="text-6xl mb-2">⏱️</div>
-            <div
-              className="text-5xl"
-              style={{
-                background: 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
+        {/* Game Area - Canvas takes most space */}
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Three.js Stone Totem Visualization - Full height */}
+          <div className="flex-1 w-full h-full bg-gradient-to-b from-sky-200 via-blue-100 to-gray-200 rounded-3xl overflow-hidden shadow-2xl relative">
+            <Canvas
+              camera={{ position: [0, 8, 12], fov: 50 }}
+              gl={{ antialias: true }}
+              className="w-full h-full"
             >
-              {timeLeft}s
-            </div>
-          </div>
+              {/* Lighting */}
+              <ambientLight intensity={0.7} />
+              <directionalLight position={[10, 10, 5]} intensity={1.2} />
+              <pointLight position={[-5, 5, -5]} intensity={0.6} color="#FFD93D" />
 
-          {/* Rope visualization */}
-          <div className="w-full max-w-3xl">
-            <div className="relative bg-white rounded-full h-32 shadow-inner overflow-hidden" style={{ border: '4px solid rgba(0, 0, 0, 0.1)' }}>
-              {/* Left zone */}
-              <div className="absolute left-0 top-0 bottom-0 w-1/4 bg-gradient-to-r from-[#FF6B6B] to-transparent opacity-30" />
-              {/* Right zone */}
-              <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-gradient-to-l from-[#6BCB77] to-transparent opacity-30" />
-              {/* Center line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-400 transform -translate-x-1/2" />
-              
-              {/* Rope marker */}
+              {/* Camera Controls */}
+              <PerspectiveCamera makeDefault position={[0, 8, 12]} />
+              <OrbitControls
+                enableZoom={false}
+                enablePan={false}
+                minPolarAngle={Math.PI / 4}
+                maxPolarAngle={Math.PI / 2.5}
+              />
+
+              {/* Ground/Platform */}
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+                <cylinderGeometry args={[8, 8, 0.5, 32]} />
+                <meshStandardMaterial color="#8B7355" />
+              </mesh>
+
+              {/* Stone Totem Base */}
+              <mesh position={[0, 0.5, 0]}>
+                <cylinderGeometry args={[1.5, 1.8, 1, 16]} />
+                <meshStandardMaterial color="#6B6B6B" roughness={0.8} />
+              </mesh>
+
+              {/* Stone Totem Middle */}
+              <mesh position={[0, 1.5, 0]}>
+                <cylinderGeometry args={[1.2, 1.5, 1, 16]} />
+                <meshStandardMaterial color="#7B7B7B" roughness={0.8} />
+              </mesh>
+
+              {/* Stone Totem Top - Tiltable */}
+              <group ref={totemRef} position={[0, 2.5, 0]}>
+                <mesh>
+                  <cylinderGeometry args={[1, 1.2, 1.5, 16]} />
+                  <meshStandardMaterial color="#8B8B8B" roughness={0.8} />
+                </mesh>
+                
+                {/* Players on top */}
+                {players.map((player, index) => {
+                  const angle = (index / players.length) * Math.PI * 2;
+                  const radius = 1.3;
+                  return (
+                    <mesh
+                      key={player.name}
+                      position={[Math.cos(angle) * radius, 1, Math.sin(angle) * radius]}
+                    >
+                      <cylinderGeometry args={[0.2, 0.2, 0.6, 8]} />
+                      <meshStandardMaterial color={player.avatarColor} />
+                    </mesh>
+                  );
+                })}
+              </group>
+
+              {/* Balance indicator rings */}
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
+                <ringGeometry args={[1.8, 2.2, 32]} />
+                <meshStandardMaterial 
+                  color={Math.abs(totemBalance) < 10 ? "#6BCB77" : Math.abs(totemBalance) < 30 ? "#FFD93D" : "#FF6B6B"}
+                  opacity={0.6}
+                  transparent
+                />
+              </mesh>
+            </Canvas>
+
+            {/* Timer Overlay - Top Left */}
+            <div className="absolute top-4 left-4 text-center z-10">
+              <div className="text-3xl mb-1">⏱️</div>
               <div
-                className="absolute top-1/2 w-16 h-16 transform -translate-y-1/2 transition-all duration-200"
+                className="text-3xl font-bold"
                 style={{
-                  left: `calc(50% + ${ropePosition}% - 2rem)`,
+                  background: 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
                 }}
               >
-                <div className="w-full h-full bg-gradient-to-br from-[#FFD93D] to-[#FF6B6B] rounded-full shadow-2xl flex items-center justify-center animate-pulse">
-                  <span className="text-2xl">🪢</span>
-                </div>
+                {timeLeft}s
               </div>
             </div>
 
-            {/* Position indicator */}
-            <div className="mt-4 text-center text-gray-600">
-              Position: {ropePosition > 0 ? '+' : ''}{ropePosition.toFixed(1)}
+            {/* Hold Time Overlay - Top Right */}
+            <div className="absolute top-4 right-4 text-center z-10">
+              <div className="text-sm text-gray-600 mb-1">Hold Time</div>
+              <div
+                className="text-4xl font-bold"
+                style={{
+                  background: 'linear-gradient(135deg, #4D96FF 0%, #6BCB77 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                {holdTime.toFixed(1)}s
+              </div>
             </div>
-          </div>
 
-          {/* Click count */}
-          <div className="text-center">
-            <div className="text-xl text-gray-600 mb-2">Clicks</div>
-            <div
-              className="text-6xl"
-              style={{
-                background: 'linear-gradient(135deg, #4D96FF 0%, #6BCB77 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              {clickCount}
+            {/* Balance indicator - Bottom Center */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center z-10">
+              <div className={`px-4 py-2 rounded-full shadow-lg font-semibold ${
+                Math.abs(totemBalance) < 10 
+                  ? 'bg-green-500/90 text-white' 
+                  : Math.abs(totemBalance) < 30 
+                  ? 'bg-yellow-500/90 text-white' 
+                  : 'bg-red-500/90 text-white'
+              }`}>
+                Balance: {totemBalance > 0 ? '+' : ''}{totemBalance.toFixed(1)}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* My player card and controls */}
-        <div className="mt-6 space-y-4">
+        {/* My player card and controls - Compact */}
+        <div className="mt-2 space-y-2">
           <PlayerCard
             name={players[0].name}
             score={players[0].score}
             avatarColor={players[0].avatarColor}
             status={gameStarted ? 'active' : 'waiting'}
             isMe
-            size="large"
+            size="small"
           />
 
           <PlayfulButton
-            onClick={handleClick}
-            variant="danger"
+            onClick={handleBalance}
+            variant="secondary"
             size="large"
             disabled={!gameStarted}
             className="w-full"
           >
-            💪 PULL! 💪
+            ⚖️ BALANCE! ⚖️
           </PlayfulButton>
         </div>
       </div>
