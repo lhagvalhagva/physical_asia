@@ -430,7 +430,7 @@ export function WaterBalloon({ players, onGameEnd, onHome, onLeaderboard }: Wate
       const newTargets = [...prev];
       const newTarget = Math.max(0, prev[currentTurn] - result);
       newTargets[currentTurn] = newTarget;
-      
+
       if (newTarget === 0) {
         setGameWon(currentTurn);
       setTimeout(() => endGame(), 2000);
@@ -651,7 +651,7 @@ export function WaterBalloon({ players, onGameEnd, onHome, onLeaderboard }: Wate
           {/* Player 2 Target */}
           <div className="text-center">
             <div className="text-xs md:text-sm text-gray-600 mb-1">{gamePlayers[1]?.name || 'Өрсөлдөгч'}</div>
-            <div
+              <div
               className="text-2xl md:text-4xl font-bold"
                 style={{
                 background: playerTargets[1] === 0 

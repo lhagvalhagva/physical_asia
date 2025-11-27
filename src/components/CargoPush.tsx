@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PlayfulButton } from './PlayfulButton';
-import { PlayerCard } from './PlayerCard';
 import { TopBar } from './TopBar';
+import { DiceButton } from './DiceButton';
 
 interface Player {
   name: string;
   score: number;
   avatarColor: string;
-  progress: number; // 0-100
+  progress: number;
 }
 
 interface CargoPushProps {
@@ -19,7 +18,6 @@ interface CargoPushProps {
 
 type Turn = 'player' | 'opponent';
 
-const LANE_LABELS = ['Дээд зам', 'Дунд зам', 'Доод зам'];
 const MAX_DISTANCE = 30;
 
 const createInitialLanes = (): number[] => [0, 0, 0];
@@ -48,43 +46,78 @@ interface DiceFaceProps {
 
 const DiceFace = ({ owner, value, active }: DiceFaceProps) => {
   const title = owner === 'player' ? 'Таны шоо' : 'AI шоо';
-  const accent = owner === 'player' ? 'text-indigo-500' : 'text-rose-500';
-  const border =
-    owner === 'player'
-      ? 'border-indigo-200 bg-white'
-      : 'border-rose-200 bg-rose-50';
+  const isPlayer = owner === 'player';
+  const accent = isPlayer ? 'text-indigo-600' : 'text-rose-600';
+  const border = isPlayer
+    ? 'border-indigo-300 bg-gradient-to-br from-indigo-50 to-white'
+    : 'border-rose-300 bg-gradient-to-br from-rose-50 to-white';
+  const dotColor = isPlayer ? 'bg-indigo-600' : 'bg-rose-600';
+  const glowColor = isPlayer
+    ? 'shadow-[0_0_20px_rgba(99,102,241,0.4)]'
+    : 'shadow-[0_0_20px_rgba(244,63,94,0.4)]';
 
   return (
-    <div className={`flex flex-col items-center gap-2 ${active ? '' : 'opacity-60'}`}>
-      <div className={`text-xs uppercase tracking-wide font-semibold ${accent}`}>{title}</div>
+    <div className={`flex flex-col items-center gap-3 transition-all duration-300 ${active ? '' : 'opacity-50'}`}>
+      <div className={`text-sm font-bold ${accent} flex items-center gap-2 ${active ? 'animate-pulse' : ''}`}>
+        <span className="text-base">{isPlayer ? '👤' : '🤖'}</span>
+        <span>{title}</span>
+      </div>
       <div
-        className={`relative w-28 h-28 rounded-[1.4rem] border-8 ${border} shadow-2xl flex items-center justify-center transition-all ${
-          active ? 'scale-100' : 'scale-95'
+        className={`relative w-32 h-32 rounded-2xl border-4 ${border} shadow-xl flex items-center justify-center transition-all duration-300 ${
+          active ? `scale-105 ${glowColor} ring-4 ring-offset-2 ${isPlayer ? 'ring-indigo-200' : 'ring-rose-200'}` : 'scale-100'
         }`}
         style={{
-          boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)',
+          boxShadow: active
+            ? `0 20px 60px rgba(15, 23, 42, 0.3), ${isPlayer ? '0 0 30px rgba(99, 102, 241, 0.3)' : '0 0 30px rgba(244, 63, 94, 0.3)'}`
+            : '0 10px 30px rgba(15, 23, 42, 0.15)',
         }}
       >
         {value === null ? (
-          <span className="text-4xl text-slate-200 font-bold">–</span>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-5xl text-slate-300 animate-pulse">🎲</span>
+            <span className="text-xs text-slate-400 font-medium">Хүлээнэ...</span>
+          </div>
         ) : (
-          <div className="grid grid-cols-3 grid-rows-3 gap-1 w-20 h-20">
-            {Array.from({ length: 9 }).map((_, idx) => (
-              <div key={idx} className="flex items-center justify-center">
-                {DICE_DOTS[value]?.includes(idx) && (
-                  <span
-                    className={`block w-3 h-3 rounded-full ${
-                      owner === 'player' ? 'bg-indigo-500' : 'bg-rose-500'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* 🎲 icon - шооны background */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-4xl opacity-15">🎲</span>
+            </div>
+            {/* Шооны нүднүүд */}
+            <div className="relative grid grid-cols-3 grid-rows-3 gap-1.5 w-24 h-24 z-10">
+              {Array.from({ length: 9 }).map((_, idx) => (
+                <div key={idx} className="flex items-center justify-center">
+                  {DICE_DOTS[value]?.includes(idx) && (
+                    <span
+                      className={`block w-4 h-4 rounded-full ${dotColor} shadow-md transition-all duration-200 ${
+                        active ? 'animate-pulse' : ''
+                      }`}
+                      style={{
+                        animationDelay: `${idx * 50}ms`,
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
+        {active && value !== null && (
+          <div className={`absolute -top-2 -right-2 w-6 h-6 ${isPlayer ? 'bg-indigo-500' : 'bg-rose-500'} rounded-full animate-ping`} />
+        )}
       </div>
-      <div className="text-xs uppercase tracking-wide text-slate-400">
-        {value === null ? 'Шидэлтийг хүлээнэ' : `Үр дүн: ${value}`}
+      <div className={`text-sm font-semibold transition-colors ${active ? accent : 'text-slate-400'}`}>
+        {value === null ? (
+          <span className="flex items-center gap-2">
+            <span>⏳</span>
+            <span>Шоо шидэх хүлээнэ</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <span className="text-lg">✅</span>
+            <span>Үр дүн: <span className="text-xl font-bold">{value}</span></span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -349,7 +382,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
   };
 
 
-  const handleRollDice = () => {
+  const handleRollDice = (value: number) => {
     if (gameOver) return;
     if (currentTurn !== 'player') {
       setMessage('AI шидэж байна, түр хүлээнэ үү.');
@@ -360,7 +393,6 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
       return;
     }
 
-    const value = rollDice();
     setPlayerDice(value);
 
     if (value === 6) {
@@ -549,23 +581,39 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
                 <DiceFace owner="player" value={playerDice ?? pendingMoveValue} active={currentTurn === 'player'} />
               </div>
 
-              <div className="bg-indigo-50 text-indigo-900 rounded-2xl p-4 text-sm leading-relaxed min-h-[80px]">
-                {message}
-                {moveTimerLeft !== null && (
-                  <div className="mt-2 text-xs text-indigo-700 font-semibold">
-                    ⏰ Хайрцаг сонгох цаг: {moveTimerLeft}с
+              <div className={`rounded-2xl p-5 text-sm leading-relaxed min-h-[100px] transition-all duration-300 ${
+                currentTurn === 'player'
+                  ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-900 border-2 border-indigo-200'
+                  : 'bg-gradient-to-br from-rose-50 to-rose-100 text-rose-900 border-2 border-rose-200'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl flex-shrink-0">
+                    {currentTurn === 'player' ? '👤' : '🤖'}
+                  </span>
+                  <div className="flex-1">
+                    <div className="font-semibold mb-2 text-base">{message}</div>
+                    {moveTimerLeft !== null && (
+                      <div className={`mt-3 text-xs font-bold px-3 py-1.5 rounded-lg inline-block ${
+                        moveTimerLeft <= 2
+                          ? 'bg-red-100 text-red-700 animate-pulse'
+                          : moveTimerLeft <= 3
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-indigo-100 text-indigo-700'
+                      }`}>
+                        ⏰ Хайрцаг сонгох цаг: {moveTimerLeft}с
+                      </div>
+                    )}
                   </div>
-                )}
-          </div>
+                </div>
+              </div>
 
-              <PlayfulButton
-                onClick={handleRollDice}
-                variant="primary"
-                size="large"
-                disabled={rollButtonDisabled}
-                className="w-full"
-                children="🎲 ШОО ШИДЭХ"
-              />
+              <div className="flex justify-center">
+                <DiceButton
+                  onRoll={handleRollDice}
+                  disabled={rollButtonDisabled}
+                  isActive={currentTurn === 'player' && !gameOver && pendingMoveValue === null}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -573,4 +621,3 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     </div>
   );
 }
-
