@@ -273,7 +273,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     };
 
     // Listen for opponent's move
-    const handleOpponentMove = (data: { playerId: string; laneIndex: number; diceValue: number; newPositions: number[] }) => {
+    const handleOpponentMove = (data: { playerId: string; laneIndex: number; diceValue: number; newPositions: number[]; isPlayer1?: boolean }) => {
       if (data.playerId === playerIdRef.current) {
         console.log('⏭️ Ignoring own move');
         return; // Ignore own actions
@@ -281,7 +281,9 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       
       console.log('📦 Opponent moved:', data);
       
-      // Update lane positions immediately
+      // The positions from opponent are already in the correct coordinate system
+      // (opponent's perspective: they move in opposite direction)
+      // We just use them directly since both players share the same coordinate system
       lanePositionsRef.current = data.newPositions;
       setLanePositions(data.newPositions);
       setSelectedLane(data.laneIndex);
@@ -290,7 +292,13 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       setOpponentRollingValue(null);
 
       // Check for win condition
-      if (data.newPositions[data.laneIndex] <= -MAX_DISTANCE) {
+      // If opponent is player 1, they win at +MAX_DISTANCE
+      // If opponent is player 2, they win at -MAX_DISTANCE
+      const opponentIsPlayer1 = data.isPlayer1 !== undefined ? data.isPlayer1 : !isPlayer1Ref.current;
+      const winPosition = opponentIsPlayer1 ? MAX_DISTANCE : -MAX_DISTANCE;
+      
+      if ((opponentIsPlayer1 && data.newPositions[data.laneIndex] >= winPosition) ||
+          (!opponentIsPlayer1 && data.newPositions[data.laneIndex] <= winPosition)) {
         scheduleTimeout(() => {
           finalizeGame('opponent', data.laneIndex);
         }, 500);
@@ -361,7 +369,8 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
             playerId: data.playerId,
             laneIndex: data.state.laneIndex,
             diceValue: data.state.diceValue || data.state.value,
-            newPositions: data.state.positions
+            newPositions: data.state.positions,
+            isPlayer1: data.state.isPlayer1
           });
         }
       }
@@ -778,7 +787,14 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     const value = pendingMoveValue;
     const snapshot = lanePositionsRef.current;
     const before = snapshot[laneIndex];
-    const after = Math.min(MAX_DISTANCE, before + value);
+    
+    // Player 1 moves in positive direction (right), Player 2 moves in negative direction (left)
+    // isPlayer1Ref.current means we are player 1, so we move right (+value)
+    // If we are player 2, we should move left (-value), but we handle that when receiving opponent's move
+    const after = isPlayer1Ref.current 
+      ? Math.min(MAX_DISTANCE, before + value)  // Player 1: move right (+)
+      : Math.max(-MAX_DISTANCE, before - value); // Player 2: move left (-)
+    
     const updated = snapshot.map((pos, idx) => (idx === laneIndex ? after : pos));
 
     lanePositionsRef.current = updated;
@@ -794,11 +810,16 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         type: 'move',
         laneIndex,
         diceValue: value,
-        positions: updated
+        positions: updated,
+        isPlayer1: isPlayer1Ref.current // Include player role for reference
       });
     }
 
-    if (after >= MAX_DISTANCE) {
+    // Win condition: Player 1 wins at +MAX_DISTANCE, Player 2 wins at -MAX_DISTANCE
+    if (isPlayer1Ref.current && after >= MAX_DISTANCE) {
+      finalizeGame('player', laneIndex);
+      return;
+    } else if (!isPlayer1Ref.current && after <= -MAX_DISTANCE) {
       finalizeGame('player', laneIndex);
       return;
     }
