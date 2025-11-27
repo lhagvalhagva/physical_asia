@@ -41,6 +41,7 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [playerProfile, setPlayerProfile] = useState<any>(null);
   const [matchSessionId, setMatchSessionId] = useState<string | null>(null);
+  const [lastGameResult, setLastGameResult] = useState<any>(null);
 
   const token = authService.getToken();
   const wsClientHook = useWebSocket(token);

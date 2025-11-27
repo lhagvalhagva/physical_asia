@@ -614,10 +614,11 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     setMessage(customMessage);
 
     // Submit draw result to backend if session exists
+    let gameResult = null;
     if (sessionIdRef.current) {
       try {
         const gameTime = 30 - (currentTurn === 'player' ? playerTimeLeft : opponentTimeLeft);
-        await gameService.submitResult(
+        const response = await gameService.submitResult(
           sessionIdRef.current,
           250, // Draw score (average)
           {
@@ -630,12 +631,31 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
           1 // Both players rank 1 in draw
         );
         console.log('✅ Draw result submitted to backend');
+        gameResult = response.data;
       } catch (error) {
         console.error('❌ Error submitting draw result:', error);
       }
     }
 
-    scheduleTimeout(() => onGameEnd(players, null), 1500);
+    const updatedPlayers = players.map((p, index) => {
+      if (index === 0) {
+        return {
+          ...p,
+          score: p.score + 250, // Draw score
+          progress: p.progress,
+        };
+      }
+      if (index === 1) {
+        return {
+          ...p,
+          score: p.score + 250, // Draw score
+          progress: p.progress,
+        };
+      }
+      return p;
+    });
+
+    scheduleTimeout(() => onGameEnd(updatedPlayers, gameResult), 1500);
   };
 
   const resetBoard = () => {
@@ -658,68 +678,91 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     setMessage('');
   };
 
-  const handlePlayerTimeOut = () => {
+  const handlePlayerTimeOut = async () => {
     if (gameOverRef.current) return;
     setMessage('⏰ Таны цаг дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.');
     
-    scheduleTimeout(() => {
+    scheduleTimeout(async () => {
       if (gameOverRef.current) return;
-      resolveWinnerByCargoPosition();
+      await resolveWinnerByCargoPosition();
     }, 1000);
   };
 
-  const handleOpponentTimeOut = () => {
+  const handleOpponentTimeOut = async () => {
     if (gameOverRef.current) return;
     setMessage(`⏰ ${opponentName}-ийн цаг дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.`);
     
-    scheduleTimeout(() => {
+    scheduleTimeout(async () => {
       if (gameOverRef.current) return;
-      resolveWinnerByCargoPosition();
+      await resolveWinnerByCargoPosition();
     }, 1000);
   };
 
-  const resolveWinnerByCargoPosition = () => {
+  const resolveWinnerByCargoPosition = async () => {
     if (gameOverRef.current) return;
 
     const snapshot = lanePositionsRef.current;
-    // positiveLanes: таны талд (эерэг чиглэлд) байгаа хайрцгууд
-    // negativeLanes: Opponent талд (сөрөг чиглэлд) байгаа хайрцгууд
-    const positiveLanes = snapshot.filter((pos) => pos > 0);
-    const negativeLanes = snapshot.filter((pos) => pos < 0);
+    
+    // Determine winner based on player role (Player 1 vs Player 2)
+    // Player 1 wins if boxes are pushed to positive side (+MAX_DISTANCE)
+    // Player 2 wins if boxes are pushed to negative side (-MAX_DISTANCE)
+    
+    if (isPlayer1Ref.current) {
+      // We are Player 1 - check positive positions
+      const positiveLanes = snapshot.filter((pos) => pos > 0);
+      const negativeLanes = snapshot.filter((pos) => pos < 0);
+      
+      const positiveCount = positiveLanes.length;
+      const negativeCount = negativeLanes.length;
+      const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
+      const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
 
-    const positiveCount = positiveLanes.length; // Таны талд хэдэн хайрцаг байна
-    const negativeCount = negativeLanes.length; // Opponent талд хэдэн хайрцаг байна
+      // Бүх хайрцгууд төвд байвал тэнцэх
+      if (positiveCount === 0 && negativeCount === 0) {
+        await finalizeDraw('⏳ Хугацаа дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.');
+        return;
+      }
 
-    const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
-    const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
+      // Дүрэм: Аль талд илүү хайрцаг байвал тэр тал ялна
+      if (positiveCount > negativeCount) {
+        await finalizeGame('player', undefined, '⏳ Хугацаа дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
+      } else if (negativeCount > positiveCount) {
+        await finalizeGame('opponent', undefined, `⏳ Хугацаа дууслаа. ${opponentName}-ийн талд хайрцаг илүү тул ${opponentName} яллаа.`);
+      } else if (positiveDistance > negativeDistance) {
+        await finalizeGame('player', undefined, '⏳ Тэнцүү тоотой ч таны тал илүү ихээр түрсэн тул та яллаа.');
+      } else if (negativeDistance > positiveDistance) {
+        await finalizeGame('opponent', undefined, `⏳ Тэнцүү тоотой ч ${opponentName} илүү ихээр түрсэн тул ${opponentName} яллаа.`);
+      } else {
+        await finalizeDraw('⏳ Хугацаа дууслаа. Үр дүн тэнцэв.');
+      }
+    } else {
+      // We are Player 2 - check negative positions (our side)
+      const positiveLanes = snapshot.filter((pos) => pos > 0);
+      const negativeLanes = snapshot.filter((pos) => pos < 0);
+      
+      const positiveCount = positiveLanes.length;
+      const negativeCount = negativeLanes.length;
+      const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
+      const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
 
-    // Бүх хайрцгууд төвд байвал тэнцэх
-    if (positiveCount === 0 && negativeCount === 0) {
-      finalizeDraw('⏳ Хугацаа дууслаа. Хайрцгууд төвд байсан тул тэнцэв.');
-      return;
-    }
+      // Бүх хайрцгууд төвд байвал тэнцэх
+      if (positiveCount === 0 && negativeCount === 0) {
+        await finalizeDraw('⏳ Хугацаа дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.');
+        return;
+      }
 
-    // Дүрэм: Аль талд илүү хайрцаг байвал тэр тал ялна
-    // positiveCount > negativeCount → таны талд илүү хайрцаг → та ялна
-    if (positiveCount > negativeCount) {
-      finalizeGame('player', undefined, '⏳ Хугацаа дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
-    } 
-    // negativeCount > positiveCount → Opponent талд илүү хайрцаг → Opponent ялна
-    else if (negativeCount > positiveCount) {
-      finalizeGame('opponent', undefined, `⏳ Хугацаа дууслаа. ${opponentName}-ийн талд хайрцаг илүү тул ${opponentName} яллаа.`);
-    } 
-    // Тэнцүү тоотой бол зайг харна
-    // positiveDistance > negativeDistance → таны тал илүү ихээр түрсэн → та ялна
-    else if (positiveDistance > negativeDistance) {
-      finalizeGame('player', undefined, '⏳ Тэнцүү тоотой ч таны тал илүү ихээр түрсэн тул та яллаа.');
-    } 
-    // negativeDistance > positiveDistance → Opponent илүү ихээр түрсэн → Opponent ялна
-    else if (negativeDistance > positiveDistance) {
-      finalizeGame('opponent', undefined, `⏳ Тэнцүү тоотой ч ${opponentName} илүү ихээр түрсэн тул ${opponentName} яллаа.`);
-    } 
-    // Бүх зүйл тэнцүү
-    else {
-      finalizeDraw('⏳ Хугацаа дууслаа. Үр дүн тэнцэв.');
+      // For Player 2, negative side is our side
+      if (negativeCount > positiveCount) {
+        await finalizeGame('player', undefined, '⏳ Хугацаа дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
+      } else if (positiveCount > negativeCount) {
+        await finalizeGame('opponent', undefined, `⏳ Хугацаа дууслаа. ${opponentName}-ийн талд хайрцаг илүү тул ${opponentName} яллаа.`);
+      } else if (negativeDistance > positiveDistance) {
+        await finalizeGame('player', undefined, '⏳ Тэнцүү тоотой ч таны тал илүү ихээр түрсэн тул та яллаа.');
+      } else if (positiveDistance > negativeDistance) {
+        await finalizeGame('opponent', undefined, `⏳ Тэнцүү тоотой ч ${opponentName} илүү ихээр түрсэн тул ${opponentName} яллаа.`);
+      } else {
+        await finalizeDraw('⏳ Хугацаа дууслаа. Үр дүн тэнцэв.');
+      }
     }
   };
 
