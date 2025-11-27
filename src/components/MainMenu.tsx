@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PlayfulButton } from './PlayfulButton';
 import cargopushImage from '../assets/images/games/cargopush.png';
 import tugofwarImage from '../assets/images/games/tugofwar.png';
@@ -11,6 +11,7 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
+  const [isHovered, setIsHovered] = useState(false);
   return (
     <div 
       className="min-h-screen flex flex-col items-center justify-center p-8 relative"
@@ -41,7 +42,7 @@ export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
           className="bg-white rounded-[2rem] p-3 shadow-2xl transform transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden"
           onClick={() => onSelectGame('rope')}
           style={{
-            border: '6px solid rgba(255, 107, 107, 0.3)',
+            border: '6px solid red',
           }}
         >
           <div className="w-full h-48 rounded-2xl overflow-hidden shadow-lg">
@@ -57,7 +58,7 @@ export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
           className="bg-white rounded-[2rem] p-3 shadow-2xl transform transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden"
           onClick={() => onSelectGame('balloon')}
           style={{
-            border: '6px solid rgba(77, 150, 255, 0.3)',
+            border: '6px solid red',
           }}
         >
           <div className="w-full h-48 rounded-2xl overflow-hidden shadow-lg">
@@ -73,7 +74,7 @@ export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
           className="bg-white rounded-[2rem] p-3 shadow-2xl transform transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden"
           onClick={() => onSelectGame('cargo')}
           style={{
-            border: '6px solid rgba(107, 203, 119, 0.3)',
+            border: '6px solid red',
           }}
         >
           <div className="w-full h-48 rounded-2xl overflow-hidden shadow-lg">
@@ -89,8 +90,12 @@ export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
       <div className="flex gap-4">
         <button
           onClick={onShowLeaderboard}
-          className="px-12 py-6 text-2xl rounded-[2rem] bg-white text-red-600 shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 hover:bg-red-600 hover:text-white font-bold"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className="px-12 py-6 text-2xl rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold"
           style={{
+            backgroundColor: isHovered ? '#FF0000' : '#FFFFFF',
+            color: isHovered ? '#FFFFFF' : '#000000',
             border: '4px solid #FF0000',
             boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 -4px 0 rgba(0, 0, 0, 0.2)',
           }}

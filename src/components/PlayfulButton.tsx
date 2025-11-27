@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 interface PlayfulButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
+  type?: 'button' | 'submit' | 'reset';
   variant?: 'primary' | 'secondary' | 'highlight' | 'danger';
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
@@ -12,6 +13,7 @@ interface PlayfulButtonProps {
 export function PlayfulButton({
   children,
   onClick,
+  type = 'button',
   variant = 'primary',
   size = 'medium',
   disabled = false,
@@ -34,6 +36,7 @@ export function PlayfulButton({
 
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
       onMouseDown={() => setIsPressed(true)}
