@@ -6,19 +6,27 @@ class WebSocketClient {
   private socket: Socket | null = null;
 
   connect(token: string) {
+    if (this.socket?.connected) {
+      console.log('Already connected');
+      return;
+    }
+
     this.socket = io(WS_URL, {
       auth: {
         token: token
       },
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Connected to server');
+      console.log('✅ Connected to server:', this.socket?.id);
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ Disconnected from server');
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from server:', reason);
     });
 
     this.socket.on('connect_error', (error) => {
@@ -67,12 +75,44 @@ class WebSocketClient {
     this.socket?.emit('matchmaking:join', { playerId, gameType, mode });
   }
 
+  leaveMatchmaking(gameType: string, mode: string) {
+    this.socket?.emit('matchmaking:leave', { gameType, mode });
+  }
+
   onMatchmakingQueued(callback: (data: { position: number }) => void) {
     this.socket?.on('matchmaking:queued', callback);
   }
 
   onMatchmakingFound(callback: (data: { sessionId: string; opponent: string }) => void) {
     this.socket?.on('matchmaking:found', callback);
+  }
+
+  // Check if connected
+  isConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+
+  // Emit event
+  emit(event: string, data: any): void {
+    if (this.socket?.connected) {
+      this.socket.emit(event, data);
+    } else {
+      console.error('Socket not connected');
+    }
+  }
+
+  // Listen to event
+  on(event: string, callback: (...args: any[]) => void): void {
+    if (this.socket) {
+      this.socket.on(event, callback);
+    }
+  }
+
+  // Remove event listener
+  off(event: string, callback?: (...args: any[]) => void): void {
+    if (this.socket) {
+      this.socket.off(event, callback);
+    }
   }
 
   // Leaderboard Events

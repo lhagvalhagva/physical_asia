@@ -8,9 +8,10 @@ import backgroundImage from '../assets/images/background.png';
 interface MainMenuProps {
   onSelectGame: (game: 'rope' | 'balloon' | 'cargo') => void;
   onShowLeaderboard: () => void;
+  onStartMatchmaking?: () => void;
 }
 
-export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
+export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }: MainMenuProps) {
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div 
@@ -88,6 +89,20 @@ export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
       </div>
 
       <div className="flex gap-4">
+        {onStartMatchmaking && (
+          <button
+            onClick={onStartMatchmaking}
+            className="px-12 py-6 text-2xl rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold"
+            style={{
+              backgroundColor: '#4D96FF',
+              color: '#FFFFFF',
+              border: '4px solid #3B7FE8',
+              boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 -4px 0 rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            🎮 Matchmaking
+          </button>
+        )}
         <button
           onClick={onShowLeaderboard}
           onMouseEnter={() => setIsHovered(true)}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PlayfulButton } from './PlayfulButton';
 import { authService } from '../api/services/auth';
+import { wsClient } from '../websocket/client';
 import type { ApiError } from '../utils/errorHandler';
 
 interface AuthModalProps {
@@ -24,18 +25,25 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     setError(null);
 
     try {
+      let response;
       if (isLogin) {
-        await authService.login({
+        response = await authService.login({
           email: formData.email,
           password: formData.password,
         });
       } else {
-        await authService.register({
+        response = await authService.register({
           username: formData.username,
           email: formData.email,
           password: formData.password,
         });
       }
+
+      // Connect WebSocket after successful auth
+      if (response.success && response.data?.token) {
+        wsClient.connect(response.data.token);
+      }
+
       onSuccess();
       onClose();
     } catch (err: any) {

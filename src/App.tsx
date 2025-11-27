@@ -8,12 +8,14 @@ import { ResultScreen } from './components/ResultScreen';
 import { AuthModal } from './components/AuthModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { authService } from './api/services/auth';
-// import { gameService } from './api/services/game';
+import { gameService } from './api/services/game';
 import { playerService } from './api/services/player';
-// import { useWebSocket } from './hooks/useWebSocket';
-// import type { GameSession, GameResult } from './types/api';
+import { useWebSocket } from './hooks/useWebSocket';
+import { wsClient } from './websocket/client';
+import { Matchmaking } from './components/Matchmaking';
+import type { GameSession, GameResult } from './types/api';
 
-type Screen = 'menu' | 'leaderboard' | 'rope' | 'balloon' | 'cargo' | 'result' | 'auth';
+type Screen = 'menu' | 'leaderboard' | 'rope' | 'balloon' | 'cargo' | 'result' | 'auth' | 'matchmaking';
 type GameType = 'rope' | 'balloon' | 'cargo';
 
 interface Player {
@@ -34,13 +36,14 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('menu');
   const [currentGame, setCurrentGame] = useState<GameType | null>(null);
   const [players, setPlayers] = useState<Player[]>(initialPlayers);
-  // const [gameSession, setGameSession] = useState<GameSession | null>(null);
+  const [gameSession, setGameSession] = useState<GameSession | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [playerProfile, setPlayerProfile] = useState<any>(null);
+  const [matchSessionId, setMatchSessionId] = useState<string | null>(null);
 
   const token = authService.getToken();
-  // const wsClient = useWebSocket(token);
+  const wsClientHook = useWebSocket(token);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -84,64 +87,68 @@ export default function App() {
       return;
     }
 
-    // Session creation commented out
-    // try {
-    //   const gameTypeMap: Record<GameType, string> = {
-    //     rope: 'tug-of-war',
-    //     balloon: 'water-balloon',
-    //     cargo: 'cargo-push',
-    //   };
-
-    //   const response = await gameService.createSession(gameTypeMap[game], '1v1');
-    //   if (response.success && response.data) {
-    //     setGameSession(response.data);
-    //     setCurrentGame(game);
-    //     setCurrentScreen(game);
-    //     setPlayers(initialPlayers);
-
-    //     // Join game via WebSocket
-    //     const playerId = authService.getPlayerId();
-    //     if (playerId && response.data._id) {
-    //       wsClient.joinGame(response.data._id, playerId);
-    //     }
-    //   }
-    // } catch (error: any) {
-    //   console.error('Failed to create game session:', error);
-    //   alert('Тоглоом эхлүүлэхэд алдаа гарлаа: ' + error.message);
-    // }
-
-    // Direct game start without session
+    // Direct game start (local play)
     setCurrentGame(game);
     setCurrentScreen(game);
     setPlayers(initialPlayers);
+  };
+
+  const handleStartMatchmaking = () => {
+    if (!isAuthenticated) {
+      setShowAuth(true);
+      return;
+    }
+    setCurrentScreen('matchmaking');
+  };
+
+  const handleMatchFound = async (sessionId: string, opponentId: string) => {
+    setMatchSessionId(sessionId);
+    try {
+      const response = await gameService.getSession(sessionId);
+      if (response.success && response.data) {
+        setGameSession(response.data);
+        // Determine game type from session
+        const gameTypeMap: Record<string, GameType> = {
+          'tug-of-war': 'rope',
+          'water-balloon': 'balloon',
+          'cargo-push': 'cargo',
+        };
+        const gameType = gameTypeMap[response.data.gameType] || 'rope';
+        setCurrentGame(gameType);
+        setCurrentScreen(gameType);
+        setPlayers(initialPlayers);
+      }
+    } catch (error) {
+      console.error('Failed to load game session:', error);
+    }
   };
 
   const handleGameEnd = async (updatedPlayers: Player[]) => {
     setPlayers(updatedPlayers);
     setCurrentScreen('result');
 
-    // Game result submission commented out
-    // if (gameSession && isAuthenticated) {
-    //   try {
-    //     const playerId = authService.getPlayerId();
-    //     const winner = updatedPlayers.sort((a, b) => b.score - a.score)[0];
-    //     const playerRank = updatedPlayers
-    //       .sort((a, b) => b.score - a.score)
-    //       .findIndex(p => p.id === playerId || p.name === 'You') + 1;
+    // Submit game result to API if session exists
+    if (gameSession && isAuthenticated) {
+      try {
+        const playerId = authService.getPlayerId();
+        const winner = updatedPlayers.sort((a, b) => b.score - a.score)[0];
+        const playerRank = updatedPlayers
+          .sort((a, b) => b.score - a.score)
+          .findIndex(p => p.id === playerId || p.name === 'You') + 1;
 
-    //     await gameService.submitResult(
-    //       gameSession._id,
-    //       winner.score,
-    //       {
-    //         players: updatedPlayers.map(p => ({ name: p.name, score: p.score })),
-    //         gameType: currentGame,
-    //       },
-    //       playerRank
-    //     );
-    //   } catch (error) {
-    //     console.error('Failed to submit game result:', error);
-    //   }
-    // }
+        await gameService.submitResult(
+          gameSession._id,
+          winner.score,
+          {
+            players: updatedPlayers.map(p => ({ name: p.name, score: p.score })),
+            gameType: currentGame,
+          },
+          playerRank
+        );
+      } catch (error) {
+        console.error('Failed to submit game result:', error);
+      }
+    }
   };
 
   const handlePlayAgain = () => {
@@ -152,16 +159,17 @@ export default function App() {
   };
 
   const handleMainMenu = () => {
-    // WebSocket leave game commented out
-    // if (gameSession) {
-    //   const playerId = authService.getPlayerId();
-    //   if (playerId) {
-    //     wsClient.leaveGame(gameSession._id, playerId);
-    //   }
-    // }
+    // Leave game session via WebSocket
+    if (gameSession) {
+      const playerId = authService.getPlayerId();
+      if (playerId) {
+        wsClient.leaveGame(gameSession._id, playerId);
+      }
+    }
     setCurrentScreen('menu');
     setCurrentGame(null);
-    // setGameSession(null);
+    setGameSession(null);
+    setMatchSessionId(null);
     setPlayers(initialPlayers);
   };
 
@@ -181,7 +189,7 @@ export default function App() {
     authService.logout();
     setIsAuthenticated(false);
     setShowAuth(true);
-    // wsClient.disconnect();
+    wsClient.disconnect();
   };
 
   return (
@@ -221,11 +229,19 @@ export default function App() {
           <MainMenu
             onSelectGame={handleSelectGame}
             onShowLeaderboard={handleShowLeaderboard}
+            onStartMatchmaking={handleStartMatchmaking}
           />
         )}
 
         {currentScreen === 'leaderboard' && (
           <Leaderboard onClose={handleCloseLeaderboard} />
+        )}
+
+        {currentScreen === 'matchmaking' && (
+          <Matchmaking
+            onMatchFound={handleMatchFound}
+            onCancel={() => setCurrentScreen('menu')}
+          />
         )}
 
         {currentScreen === 'rope' && (
