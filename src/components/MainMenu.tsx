@@ -23,9 +23,9 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         backgroundRepeat: 'no-repeat',
       }}
     >
-      <div className="text-center mb-12">
+      <div className="text-center mb-6 md:mb-12">
         <h1
-          className="text-8xl mb-4"
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-2 md:mb-4 px-4"
           style={{
             fontFamily: "'Arial Black', 'Impact', 'Oswald', 'Roboto', sans-serif",
             fontWeight: '900',
@@ -88,15 +88,15 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         </div>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto items-stretch sm:items-center px-4 sm:px-0">
         {onStartMatchmaking && (
           <button
             onClick={onStartMatchmaking}
-            className="px-12 py-6 text-2xl rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold"
+            className="px-4 py-3 sm:px-8 sm:py-4 md:px-12 md:py-6 text-base sm:text-lg md:text-xl lg:text-2xl rounded-xl sm:rounded-2xl md:rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold w-full sm:w-auto"
             style={{
               backgroundColor: '#4D96FF',
               color: '#FFFFFF',
-              border: '4px solid #3B7FE8',
+              border: '3px solid #3B7FE8',
               boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 -4px 0 rgba(0, 0, 0, 0.2)',
             }}
           >
@@ -107,11 +107,11 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
           onClick={onShowLeaderboard}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="px-12 py-6 text-2xl rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold"
+          className="px-4 py-3 sm:px-8 sm:py-4 md:px-12 md:py-6 text-base sm:text-lg md:text-xl lg:text-2xl rounded-xl sm:rounded-2xl md:rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold w-full sm:w-auto"
           style={{
             backgroundColor: isHovered ? '#FF0000' : '#FFFFFF',
             color: isHovered ? '#FFFFFF' : '#000000',
-            border: '4px solid #FF0000',
+            border: '3px solid #FF0000',
             boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 -4px 0 rgba(0, 0, 0, 0.2)',
           }}
         >
