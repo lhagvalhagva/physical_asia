@@ -456,8 +456,8 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
 
       {countdown !== null && <CountdownNumber number={countdown} />}
 
-      <div className="flex-1 flex flex-col p-2 md:p-4">
-        <div className={`mb-2 ${otherPlayers.length === 3 ? 'grid grid-cols-3 gap-2' : otherPlayers.length === 2 ? 'grid grid-cols-2 gap-2' : ''}`}>
+      <div className="flex-1 flex flex-col p-2 sm:p-3 md:p-4">
+        <div className={`mb-2 ${otherPlayers.length === 3 ? 'grid grid-cols-3 gap-1 sm:gap-2' : otherPlayers.length === 2 ? 'grid grid-cols-2 gap-1 sm:gap-2' : ''}`}>
           {otherPlayers.map((player) => (
             <PlayerCard
               key={player.name}
@@ -474,10 +474,10 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
           <div className="flex-1 w-full h-full bg-gradient-to-b from-sky-200 via-blue-100 to-gray-200 rounded-3xl overflow-hidden shadow-2xl relative">
             <div ref={phaserContainerRef} className="w-full h-full" />
 
-            <div className="absolute top-4 left-4 text-center z-10">
-              <div className="text-3xl mb-1">⏱️</div>
+            <div className="absolute top-2 left-2 sm:top-4 sm:left-4 text-center z-10">
+              <div className="text-xl sm:text-2xl md:text-3xl mb-0.5 sm:mb-1">⏱️</div>
               <div
-                className="text-3xl font-bold"
+                className="text-xl sm:text-2xl md:text-3xl font-bold"
                 style={{
                   background: 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%)',
                   WebkitBackgroundClip: 'text',
@@ -488,10 +488,10 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
               </div>
             </div>
 
-            <div className="absolute top-4 right-4 text-center z-10">
-              <div className="text-sm text-gray-600 mb-1">Clicks</div>
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 text-center z-10">
+              <div className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1">Clicks</div>
               <div
-                className="text-4xl font-bold"
+                className="text-2xl sm:text-3xl md:text-4xl font-bold"
                 style={{
                   background: 'linear-gradient(135deg, #4D96FF 0%, #6BCB77 100%)',
                   WebkitBackgroundClip: 'text',
@@ -502,8 +502,8 @@ export function TugOfWar({ players, onGameEnd, onHome, onLeaderboard }: TugOfWar
               </div>
             </div>
 
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center z-10">
-              <div className={`px-4 py-2 rounded-full shadow-lg font-semibold ${
+            <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 text-center z-10">
+              <div className={`px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full shadow-lg font-semibold text-xs sm:text-sm md:text-base ${
                 progress > 0.8
                   ? 'bg-green-500/90 text-white'
                   : progress > 0.5

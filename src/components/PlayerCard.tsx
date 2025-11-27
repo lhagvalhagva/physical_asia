@@ -18,18 +18,18 @@ export function PlayerCard({ name, score, avatarColor, status, isMe = false, siz
   };
 
   const sizeStyles = {
-    small: 'p-3',
-    large: 'p-6',
+    small: 'p-2 sm:p-3',
+    large: 'p-4 sm:p-5 md:p-6',
   };
 
   const avatarSizeStyles = {
-    small: 'w-12 h-12',
-    large: 'w-24 h-24',
+    small: 'w-10 h-10 sm:w-12 sm:h-12',
+    large: 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24',
   };
 
   const textSizeStyles = {
-    small: 'text-sm',
-    large: 'text-xl',
+    small: 'text-xs sm:text-sm',
+    large: 'text-base sm:text-lg md:text-xl',
   };
 
   return (
@@ -37,7 +37,7 @@ export function PlayerCard({ name, score, avatarColor, status, isMe = false, siz
       className={`
         relative
         bg-white
-        rounded-3xl
+        rounded-xl sm:rounded-2xl md:rounded-3xl
         shadow-xl
         transform
         transition-all
@@ -52,12 +52,12 @@ export function PlayerCard({ name, score, avatarColor, status, isMe = false, siz
       }}
     >
       {isMe && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#FFD93D] to-[#FF6B6B] text-white px-4 py-1 rounded-full text-xs shadow-lg">
+        <div className="absolute -top-2 sm:-top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#FFD93D] to-[#FF6B6B] text-white px-2 sm:px-3 md:px-4 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs shadow-lg">
           YOU
         </div>
       )}
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <div
           className={`
             ${avatarSizeStyles[size]}
@@ -72,7 +72,7 @@ export function PlayerCard({ name, score, avatarColor, status, isMe = false, siz
             border: '3px solid white',
           }}
         >
-          <User className="text-white" size={size === 'small' ? 24 : 48} />
+          <User className="text-white" size={size === 'small' ? 20 : 32} />
         </div>
         
         <div className="flex-1">

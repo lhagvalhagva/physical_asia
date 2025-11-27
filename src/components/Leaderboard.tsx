@@ -70,10 +70,10 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] rounded-[2rem] p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="text-center mb-6">
+      <div className="bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="text-center mb-4 sm:mb-6">
           <h1
-            className="text-4xl font-bold mb-2"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2"
             style={{
               background: 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 50%, #6BCB77 100%)',
               WebkitBackgroundClip: 'text',
@@ -84,17 +84,17 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
           </h1>
         </div>
 
-        <div className="flex gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
           <button
             onClick={() => {
               setActiveTab('global');
               setGameType('all');
             }}
             className={`
-              flex-1 py-3 rounded-2xl transition-all duration-300
+              flex-1 py-2 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-300 text-sm sm:text-base touch-manipulation
               ${activeTab === 'global' 
                 ? 'bg-gradient-to-br from-[#4D96FF] to-[#3B7FE8] text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-600 hover:scale-105'
+                : 'bg-white text-gray-600 active:scale-95 sm:hover:scale-105'
               }
             `}
           >
@@ -103,10 +103,10 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
           <button
             onClick={() => setActiveTab('game')}
             className={`
-              flex-1 py-3 rounded-2xl transition-all duration-300
+              flex-1 py-2 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-300 text-sm sm:text-base touch-manipulation
               ${activeTab === 'game' 
                 ? 'bg-gradient-to-br from-[#6BCB77] to-[#5BB967] text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-600 hover:scale-105'
+                : 'bg-white text-gray-600 active:scale-95 sm:hover:scale-105'
               }
             `}
           >
@@ -115,16 +115,16 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
         </div>
 
         {activeTab === 'game' && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             {['all', 'tug-of-war', 'water-balloon', 'cargo-push'].map((type) => (
               <button
                 key={type}
                 onClick={() => setGameType(type)}
                 className={`
-                  px-4 py-2 rounded-xl text-sm transition-all
+                  px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm transition-all touch-manipulation
                   ${gameType === type
                     ? 'bg-blue-500 text-white shadow-md'
-                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                    : 'bg-white text-gray-600 active:bg-gray-100 sm:hover:bg-gray-100'
                   }
                 `}
               >
@@ -153,7 +153,7 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
         )}
 
         {!loading && leaderboard.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {leaderboard.map((entry) => {
               const isCurrentPlayer = entry.playerId === currentPlayerId;
               return (
@@ -161,36 +161,36 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
                   key={entry.playerId}
                   className={`
                     bg-gradient-to-br ${getCardGradient(entry.rank)}
-                    rounded-2xl p-4 shadow-lg
-                    transform transition-all duration-300 hover:scale-105
-                    flex items-center gap-4
-                    ${isCurrentPlayer ? 'ring-4 ring-blue-500' : ''}
+                    rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg
+                    transform transition-all duration-300 active:scale-95 sm:hover:scale-105
+                    flex items-center gap-2 sm:gap-3 md:gap-4
+                    ${isCurrentPlayer ? 'ring-2 sm:ring-4 ring-blue-500' : ''}
                   `}
                   style={{
-                    border: entry.rank <= 3 ? '3px solid white' : '2px solid rgba(255, 255, 255, 0.5)',
+                    border: entry.rank <= 3 ? '2px solid white' : '1px solid rgba(255, 255, 255, 0.5)',
                   }}
                 >
-                  <div className="flex items-center justify-center w-12">
+                  <div className="flex items-center justify-center w-8 sm:w-10 md:w-12 flex-shrink-0">
                     {getRankIcon(entry.rank)}
                   </div>
                   
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
+                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
                     style={{
                       background: entry.avatar || '#4D96FF',
-                      border: '3px solid white',
+                      border: '2px solid white',
                     }}
                   >
-                    <span className="text-white text-xl font-bold">
+                    <span className="text-white text-sm sm:text-base md:text-xl font-bold">
                       {entry.username.charAt(0).toUpperCase()}
                     </span>
                   </div>
 
-                  <div className="flex-1">
-                    <div className={`${entry.rank <= 3 ? 'text-white' : 'text-gray-800'} font-semibold`}>
+                  <div className="flex-1 min-w-0">
+                    <div className={`${entry.rank <= 3 ? 'text-white' : 'text-gray-800'} font-semibold text-sm sm:text-base truncate`}>
                       {entry.username}
                       {isCurrentPlayer && (
-                        <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                        <span className="ml-1 sm:ml-2 text-xs bg-blue-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
                           You
                         </span>
                       )}
@@ -198,7 +198,7 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
                   </div>
 
                   <div
-                    className="text-2xl font-bold"
+                    className="text-lg sm:text-xl md:text-2xl font-bold flex-shrink-0"
                     style={{
                       color: entry.rank <= 3 ? 'white' : '#4D96FF',
                     }}
