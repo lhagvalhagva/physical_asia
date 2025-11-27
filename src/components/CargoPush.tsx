@@ -99,7 +99,6 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
   const [currentTurn, setCurrentTurn] = useState<Turn>('player');
   const [gameOver, setGameOver] = useState(false);
   const [selectedLane, setSelectedLane] = useState<number | null>(null);
-  const [timeLeft, setTimeLeft] = useState(60);
   const [playerTimeLeft, setPlayerTimeLeft] = useState(30);
   const [opponentTimeLeft, setOpponentTimeLeft] = useState(30);
   const [moveTimerLeft, setMoveTimerLeft] = useState<number | null>(null);
@@ -135,27 +134,8 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     return () => clearPendingTimeouts();
   }, []);
 
-  useEffect(() => {
-    if (gameOverRef.current) return;
 
-    const id = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (gameOverRef.current) return prev;
-        return prev > 0 ? prev - 1 : 0;
-      });
-    }, 1000);
-
-    return () => clearInterval(id);
-  }, [gameOver]);
-
-  useEffect(() => {
-    if (gameOverRef.current) return;
-    if (timeLeft <= 0) {
-      handleTimeoutResolution();
-    }
-  }, [timeLeft]);
-
-  // Тоглогч бүрт тусдаа цаг
+  // Шатрын цаг: зөвхөн одоогийн ээлжийн тоглогчийн цаг явна
   useEffect(() => {
     if (gameOverRef.current) return;
     if (currentTurn !== 'player') return;
@@ -163,19 +143,12 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     const id = setInterval(() => {
       setPlayerTimeLeft((prev) => {
         if (gameOverRef.current) return prev;
-        if (prev <= 0) return 0;
-        const newTime = prev - 1;
-        
-        // 5 секунд алдвал (25 секунд үлдэхэд) ээлж алдана
-        if (newTime <= 25) {
-          setMessage('⏰ Цаг дууслаа. Ээлж AI-д шилжинэ.');
-          setCurrentTurn('opponent');
-          setPlayerDice(null);
-          setPendingMoveValue(null);
+        if (prev <= 0) {
+          // Тоглогчийн цаг дууслаа - хайрцгийн байрлалаар ялагчийг тодорхойлох
+          handlePlayerTimeOut();
           return 0;
         }
-        
-        return newTime;
+        return prev - 1;
       });
     }, 1000);
 
@@ -189,18 +162,12 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     const id = setInterval(() => {
       setOpponentTimeLeft((prev) => {
         if (gameOverRef.current) return prev;
-        if (prev <= 0) return 0;
-        const newTime = prev - 1;
-        
-        // 5 секунд алдвал (25 секунд үлдэхэд) ээлж алдана
-        if (newTime <= 25) {
-          setMessage('⏰ AI-ийн цаг дууслаа. Таны ээлж.');
-          setCurrentTurn('player');
-          setOpponentDice(null);
+        if (prev <= 0) {
+          // AI-ийн цаг дууслаа - хайрцгийн байрлалаар ялагчийг тодорхойлох
+          handleOpponentTimeOut();
           return 0;
         }
-        
-        return newTime;
+        return prev - 1;
       });
     }, 1000);
 
@@ -308,7 +275,6 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setSelectedLane(null);
     setCurrentTurn('player');
     setGameOver(false);
-    setTimeLeft(60);
     setPlayerTimeLeft(30);
     setOpponentTimeLeft(30);
     setMoveTimerLeft(null);
@@ -317,7 +283,27 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setMessage('');
   };
 
-  const handleTimeoutResolution = () => {
+  const handlePlayerTimeOut = () => {
+    if (gameOverRef.current) return;
+    setMessage('⏰ Таны цаг дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.');
+    
+    scheduleTimeout(() => {
+      if (gameOverRef.current) return;
+      resolveWinnerByCargoPosition();
+    }, 1000);
+  };
+
+  const handleOpponentTimeOut = () => {
+    if (gameOverRef.current) return;
+    setMessage('⏰ AI-ийн цаг дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.');
+    
+    scheduleTimeout(() => {
+      if (gameOverRef.current) return;
+      resolveWinnerByCargoPosition();
+    }, 1000);
+  };
+
+  const resolveWinnerByCargoPosition = () => {
     if (gameOverRef.current) return;
 
     const snapshot = lanePositionsRef.current;
@@ -334,18 +320,18 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
 
     // Бүх хайрцгууд төвд байвал тэнцэх
     if (positiveCount === 0 && negativeCount === 0) {
-      finalizeDraw('⏳ 1 минут дууслаа. Хайрцгууд төвд байсан тул тэнцэв.');
+      finalizeDraw('⏳ Хугацаа дууслаа. Хайрцгууд төвд байсан тул тэнцэв.');
       return;
     }
 
     // Дүрэм: Аль талд илүү хайрцаг байвал тэр тал ялна
     // positiveCount > negativeCount → таны талд илүү хайрцаг → та ялна
     if (positiveCount > negativeCount) {
-      finalizeGame('player', undefined, '⏳ 1 минут дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
+      finalizeGame('player', undefined, '⏳ Хугацаа дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
     } 
     // negativeCount > positiveCount → AI талд илүү хайрцаг → AI ялна
     else if (negativeCount > positiveCount) {
-      finalizeGame('opponent', undefined, '⏳ 1 минут дууслаа. AI талд хайрцаг илүү тул AI яллаа.');
+      finalizeGame('opponent', undefined, '⏳ Хугацаа дууслаа. AI талд хайрцаг илүү тул AI яллаа.');
     } 
     // Тэнцүү тоотой бол зайг харна
     // positiveDistance > negativeDistance → таны тал илүү ихээр түрсэн → та ялна
@@ -358,9 +344,10 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     } 
     // Бүх зүйл тэнцүү
     else {
-      finalizeDraw('⏳ 1 минут дууслаа. Үр дүн тэнцэв.');
+      finalizeDraw('⏳ Хугацаа дууслаа. Үр дүн тэнцэв.');
     }
   };
+
 
   const handleRollDice = () => {
     if (gameOver) return;
@@ -394,6 +381,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setPendingMoveValue(value);
     setMoveTimerLeft(5);
     setMessage(`Шоо ${value} буулаа. Хайрцаг дээр дараад хөдөлгөөрэй.`);
+    // Шоо хаясны дараа цаг зогсоохгүй, үргэлжлүүлнэ
   };
 
   const handlePlayerMove = (laneIndex: number) => {
@@ -433,6 +421,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
 
     setMessage('AI ээлжээ бэлдэж байна...');
     setCurrentTurn('opponent');
+    // Ээлж AI-д шилжихэд AI-ийн цаг эхлэнэ (useEffect автоматаар ажиллана)
   };
 
   const runOpponentTurn = () => {
@@ -488,6 +477,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
         setOpponentDice(null);
         setCurrentTurn('player');
         setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
+        // Ээлж тоглогч рүү шилжихэд тоглогчийн цаг эхлэнэ (useEffect автоматаар ажиллана)
       }
     }, 600);
   };
