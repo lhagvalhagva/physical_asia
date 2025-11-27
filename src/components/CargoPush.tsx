@@ -3,6 +3,8 @@ import { TopBar } from './TopBar';
 import { DiceButton } from './DiceButton';
 import { wsClient } from '../websocket/client';
 import { gameService } from '../api/services/game';
+import bgRotateImage from '../assets/images/bg-rotate.png';
+import { Dices, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6 } from 'lucide-react';
 
 interface Player {
   name: string;
@@ -42,14 +44,32 @@ const DICE_DOTS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
+const DICE_ICONS: { [key: number]: React.ElementType } = {
+  1: Dice1,
+  2: Dice2,
+  3: Dice3,
+  4: Dice4,
+  5: Dice5,
+  6: Dice6,
+};
+
 interface DiceFaceProps {
   owner: Turn;
   value: number | null;
   active: boolean;
   opponentName?: string;
+  onClick?: () => void;
+  isRolling?: boolean;
+  rollingValue?: number | null;
 }
 
-const DiceFace = ({ owner, value, active, opponentName }: DiceFaceProps & { opponentName?: string }) => {
+const DiceFace = ({ owner, value, active, opponentName, onClick, isRolling: externalIsRolling, rollingValue: externalRollingValue }: DiceFaceProps) => {
+  const [isRolling, setIsRolling] = useState(false);
+  const [rollingValue, setRollingValue] = useState<number | null>(null);
+  
+  const isRollingState = owner === 'player' ? isRolling : (externalIsRolling ?? false);
+  const rollingValueState = owner === 'player' ? rollingValue : (externalRollingValue ?? null);
+  
   const title = owner === 'player' ? 'Таны шоо' : (opponentName ? `${opponentName}-ийн шоо` : 'Өрсөлдөгчийн шоо');
   const isPlayer = owner === 'player';
   const accent = isPlayer ? 'text-indigo-600' : 'text-rose-600';
@@ -61,66 +81,73 @@ const DiceFace = ({ owner, value, active, opponentName }: DiceFaceProps & { oppo
     ? 'shadow-[0_0_20px_rgba(99,102,241,0.4)]'
     : 'shadow-[0_0_20px_rgba(244,63,94,0.4)]';
 
+  useEffect(() => {
+    if (value !== null && isRolling) {
+      setIsRolling(false);
+      setRollingValue(null);
+    }
+  }, [value, isRolling]);
+
+  const handleClick = () => {
+    if (onClick && isPlayer && active && value === null) {
+      setIsRolling(true);
+      let count = 0;
+      const interval = setInterval(() => {
+        count++;
+        const randomFace = Math.floor(Math.random() * 6) + 1;
+        setRollingValue(randomFace);
+        
+        if (count > 10) {
+          clearInterval(interval);
+          onClick();
+        }
+      }, 100);
+    }
+  };
+
+  const displayValue = isRollingState ? rollingValueState : value;
+  const CurrentIcon = displayValue ? DICE_ICONS[displayValue] : Dices;
+
   return (
     <div className={`flex flex-col items-center gap-3 transition-all duration-300 ${active ? '' : 'opacity-50'}`}>
       <div className={`text-sm font-bold ${accent} flex items-center gap-2 ${active ? 'animate-pulse' : ''}`}>
         <span className="text-base">{isPlayer ? '👤' : '🤖'}</span>
         <span>{title}</span>
       </div>
-      <div
+      <button
+        onClick={handleClick}
+        disabled={!isPlayer || !active || value !== null || isRolling}
         className={`relative w-32 h-32 rounded-2xl border-4 ${border} shadow-xl flex items-center justify-center transition-all duration-300 ${
           active ? `scale-105 ${glowColor} ring-4 ring-offset-2 ${isPlayer ? 'ring-indigo-200' : 'ring-rose-200'}` : 'scale-100'
-        }`}
+        } ${isPlayer && active && value === null && !isRollingState ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-default'} ${isRollingState ? 'animate-shake' : ''}`}
         style={{
           boxShadow: active
             ? `0 20px 60px rgba(15, 23, 42, 0.3), ${isPlayer ? '0 0 30px rgba(99, 102, 241, 0.3)' : '0 0 30px rgba(244, 63, 94, 0.3)'}`
             : '0 10px 30px rgba(15, 23, 42, 0.15)',
         }}
       >
-        {value === null ? (
+        {displayValue === null ? (
           <div className="flex flex-col items-center gap-2">
-            <span className="text-5xl text-slate-300 animate-pulse">🎲</span>
-            <span className="text-xs text-slate-400 font-medium">Хүлээнэ...</span>
+            <Dices className={`w-16 h-16 ${isPlayer ? 'text-indigo-400' : 'text-rose-400'} ${isRollingState ? 'animate-spin' : 'animate-pulse'}`} strokeWidth={3} />
+            {isRollingState && <span className={`text-xs font-medium animate-pulse ${isPlayer ? 'text-indigo-600' : 'text-rose-600'}`}>Эргэж байна...</span>}
           </div>
         ) : (
-          <div className="relative w-full h-full flex items-center justify-center">
-            {/* 🎲 icon - шооны background */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-4xl opacity-15">🎲</span>
-            </div>
-            {/* Шооны нүднүүд */}
-            <div className="relative grid grid-cols-3 grid-rows-3 gap-1.5 w-24 h-24 z-10">
-              {Array.from({ length: 9 }).map((_, idx) => (
-                <div key={idx} className="flex items-center justify-center">
-                  {DICE_DOTS[value]?.includes(idx) && (
-                    <span
-                      className={`block w-4 h-4 rounded-full ${dotColor} shadow-md transition-all duration-200 ${
-                        active ? 'animate-pulse' : ''
-                      }`}
-                      style={{
-                        animationDelay: `${idx * 50}ms`,
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col items-center justify-center">
+            <CurrentIcon 
+              className={`w-16 h-16 ${isPlayer ? 'text-indigo-600' : 'text-rose-600'} transition-all duration-75 ${isRollingState ? 'opacity-80 animate-spin' : 'opacity-100'}`} 
+              strokeWidth={3} 
+            />
           </div>
         )}
         {active && value !== null && (
           <div className={`absolute -top-2 -right-2 w-6 h-6 ${isPlayer ? 'bg-indigo-500' : 'bg-rose-500'} rounded-full animate-ping`} />
         )}
-      </div>
+      </button>
       <div className={`text-sm font-semibold transition-colors ${active ? accent : 'text-slate-400'}`}>
-        {value === null ? (
-          <span className="flex items-center gap-2">
-            <span>⏳</span>
-            <span>Шоо шидэх хүлээнэ</span>
-          </span>
-        ) : (
+        {displayValue === null ? null : (
           <span className="flex items-center gap-2">
             <span className="text-lg">✅</span>
-            <span>Үр дүн: <span className="text-xl font-bold">{value}</span></span>
+            <span>Үр дүн: <span className="text-xl font-bold">{displayValue}</span></span>
           </span>
         )}
       </div>
@@ -145,6 +172,8 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [opponentName, setOpponentName] = useState('Opponent');
   const [gameStarted, setGameStarted] = useState(false);
+  const [isOpponentRolling, setIsOpponentRolling] = useState(false);
+  const [opponentRollingValue, setOpponentRollingValue] = useState<number | null>(null);
 
   const lanePositionsRef = useRef(lanePositions);
   const gameOverRef = useRef(gameOver);
@@ -323,7 +352,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         }
         return prev - 1;
       });
-    }, 1000);
+      }, 1000);
 
     return () => clearInterval(id);
   }, [currentTurn, gameOver]);
@@ -692,9 +721,18 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
   const rollButtonDisabled = gameOver || !isMyTurn || currentTurn !== 'player' || pendingMoveValue !== null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div 
+      className="min-h-screen flex flex-col relative"
+      style={{
+        backgroundImage: `url(${bgRotateImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       <TopBar
-        title="📦 Cargo Push"
+        title="Cargo Push"
         matchId="12345"
         onHomeClick={onHome}
         onLeaderboardClick={onLeaderboard}
@@ -737,8 +775,8 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
                     </div>
                   </button>
                 ))}
-                  </div>
-                </div>
+            </div>
+          </div>
 
               </div>
 
@@ -746,10 +784,20 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
           <div className="space-y-6">
             <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 flex flex-col gap-6">
               <div className="grid grid-cols-2 gap-6">
-                <DiceFace owner="opponent" value={opponentDice} active={!isMyTurn && currentTurn === 'opponent'} opponentName={opponentName} />
-                <DiceFace owner="player" value={playerDice ?? pendingMoveValue} active={isMyTurn && currentTurn === 'player'} />
+                <DiceFace 
+                  owner="opponent" 
+                  value={opponentDice} 
+                  active={!isMyTurn && currentTurn === 'opponent'} 
+                  opponentName={opponentName}
+                  isRolling={isOpponentRolling}
+                  rollingValue={opponentRollingValue}
+                />
+                <DiceFace 
+                  owner="player" 
+                  value={playerDice ?? pendingMoveValue} 
+                  active={isMyTurn && currentTurn === 'player'} 
+                />
               </div>
-
               <div className={`rounded-2xl p-5 text-sm leading-relaxed min-h-[100px] transition-all duration-300 ${
                 isMyTurn
                   ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-900 border-2 border-indigo-200'

@@ -28,12 +28,7 @@ export function TopBar({ title, matchId, onLeaderboardClick, onHomeClick, timeLe
 
       <div className="flex-1 text-center px-2">
         <h2
-          className="text-lg sm:text-xl md:text-2xl lg:text-3xl"
-          style={{
-            background: 'linear-gradient(135deg, #4D96FF 0%, #6BCB77 50%, #FFD93D 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
+          className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-black font-bold"
         >
           {title}
         </h2>
