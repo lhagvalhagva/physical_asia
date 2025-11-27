@@ -123,32 +123,13 @@ export default function App() {
     }
   };
 
-  const handleGameEnd = async (updatedPlayers: Player[]) => {
+  const handleGameEnd = async (updatedPlayers: Player[], gameResult?: any) => {
     setPlayers(updatedPlayers);
+    setLastGameResult(gameResult); // Store result for ResultScreen
     setCurrentScreen('result');
 
-    // Submit game result to API if session exists
-    if (gameSession && isAuthenticated) {
-      try {
-        const playerId = authService.getPlayerId();
-        const winner = updatedPlayers.sort((a, b) => b.score - a.score)[0];
-        const playerRank = updatedPlayers
-          .sort((a, b) => b.score - a.score)
-          .findIndex(p => p.id === playerId || p.name === 'You') + 1;
-
-        await gameService.submitResult(
-          gameSession._id,
-          winner.score,
-          {
-            players: updatedPlayers.map(p => ({ name: p.name, score: p.score })),
-            gameType: currentGame,
-          },
-          playerRank
-        );
-      } catch (error) {
-        console.error('Failed to submit game result:', error);
-      }
-    }
+    // Note: Result submission is now handled in game components (CargoPush, etc.)
+    // This allows each game to submit its own result format
   };
 
   const handlePlayAgain = () => {
@@ -278,6 +259,8 @@ export default function App() {
             players={players}
             onPlayAgain={handlePlayAgain}
             onMainMenu={handleMainMenu}
+            gameResult={lastGameResult}
+            sessionId={matchSessionId || gameSession?._id || undefined}
           />
         )}
       </div>

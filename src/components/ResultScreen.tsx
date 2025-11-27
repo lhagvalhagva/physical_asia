@@ -1,21 +1,67 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlayfulButton } from './PlayfulButton';
 import { Trophy, Medal, Award } from 'lucide-react';
+import type { GameResult } from '../types/api';
 
 interface Player {
   name: string;
   score: number;
   avatarColor: string;
+  id?: string;
 }
 
 interface ResultScreenProps {
   players: Player[];
   onPlayAgain: () => void;
   onMainMenu: () => void;
+  gameResult?: GameResult | null; // Game result from backend
+  sessionId?: string; // Session ID to fetch results
 }
 
-export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenProps) {
+export function ResultScreen({ players, onPlayAgain, onMainMenu, gameResult, sessionId }: ResultScreenProps) {
+  const [gameResults, setGameResults] = useState<GameResult | null>(gameResult || null);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch game results if sessionId provided but no result
+  useEffect(() => {
+    if (sessionId && !gameResults) {
+      fetchGameResults();
+    }
+  }, [sessionId]);
+
+  const fetchGameResults = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5001/api/game/session/${sessionId}/results`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setGameResults(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch game results:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  
+  // Get player's result from backend
+  const playerId = localStorage.getItem('playerId');
+  const playerResult = gameResults && playerId 
+    ? (Array.isArray(gameResults) 
+        ? gameResults.find((r: any) => r.playerId === playerId)
+        : gameResults)
+    : null;
 
   const getRankIcon = (rank: number) => {
     if (rank === 0) return <Trophy className="text-[#FFD93D] animate-bounce" size={64} />;
@@ -51,6 +97,30 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
           🎉 Тоглоом дууслаа! 🎉
         </h1>
         <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700">Эцсийн үр дүн</p>
+        
+        {/* Show rewards if available */}
+        {playerResult && (
+          <div className="mt-4 sm:mt-6 flex flex-wrap justify-center gap-3 sm:gap-4">
+            {playerResult.xpEarned > 0 && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 sm:px-6 py-2 sm:py-3">
+                <div className="text-xs sm:text-sm text-blue-600 font-semibold">XP</div>
+                <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-700">+{playerResult.xpEarned}</div>
+              </div>
+            )}
+            {playerResult.rewards?.coins > 0 && (
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl px-4 sm:px-6 py-2 sm:py-3">
+                <div className="text-xs sm:text-sm text-yellow-600 font-semibold">💰 Зоос</div>
+                <div className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-700">+{playerResult.rewards.coins}</div>
+              </div>
+            )}
+            {playerResult.pointsEarned > 0 && (
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-xl px-4 sm:px-6 py-2 sm:py-3">
+                <div className="text-xs sm:text-sm text-purple-600 font-semibold">Оноо</div>
+                <div className="text-lg sm:text-xl md:text-2xl font-bold text-purple-700">+{playerResult.pointsEarned}</div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-3 sm:space-y-4 md:space-y-6 w-full max-w-2xl mb-6 sm:mb-8 md:mb-12 px-4">

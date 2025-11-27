@@ -15,7 +15,7 @@ interface Player {
 
 interface CargoPushProps {
   players: Player[];
-  onGameEnd: (players: Player[]) => void;
+  onGameEnd: (players: Player[], gameResult?: any) => void;
   onHome: () => void;
   onLeaderboard: () => void;
   sessionId?: string; // Optional: sessionId from matchmaking
@@ -274,9 +274,14 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     // Listen for opponent's move
     const handleOpponentMove = (data: { playerId: string; laneIndex: number; diceValue: number; newPositions: number[] }) => {
-      if (data.playerId === playerIdRef.current) return; // Ignore own actions
+      if (data.playerId === playerIdRef.current) {
+        console.log('⏭️ Ignoring own move');
+        return; // Ignore own actions
+      }
       
       console.log('📦 Opponent moved:', data);
+      
+      // Update lane positions immediately
       lanePositionsRef.current = data.newPositions;
       setLanePositions(data.newPositions);
       setSelectedLane(data.laneIndex);
@@ -286,23 +291,32 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
       // Check for win condition
       if (data.newPositions[data.laneIndex] <= -MAX_DISTANCE) {
-        finalizeGame('opponent', data.laneIndex);
+        scheduleTimeout(() => {
+          finalizeGame('opponent', data.laneIndex);
+        }, 500);
         return;
       }
 
       // Turn management - Switch to player's turn if dice is not 6
-      if (data.diceValue === 6) {
-        setMessage(`🎲 ${opponentName} 6 буусан тул дахин шиднэ.`);
-        // Keep opponent's turn
-        setIsMyTurn(false);
-        setCurrentTurn('opponent');
-      } else {
-        // Switch to player's turn
-        console.log('🔄 Switching to player turn after opponent move');
-        setIsMyTurn(true);
-        setCurrentTurn('player');
-        setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
-      }
+      scheduleTimeout(() => {
+        if (data.diceValue === 6) {
+          setMessage(`🎲 ${opponentName} 6 буусан тул дахин шиднэ.`);
+          // Keep opponent's turn
+          setIsMyTurn(false);
+          setCurrentTurn('opponent');
+        } else {
+          // Switch to player's turn
+          console.log('🔄 Switching to player turn after opponent move (dice:', data.diceValue, ')');
+          setIsMyTurn(true);
+          setCurrentTurn('player');
+          setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
+          
+          // Force state update
+          setTimeout(() => {
+            console.log('✅ Turn switched - isMyTurn:', true, 'currentTurn:', 'player');
+          }, 100);
+        }
+      }, 500);
     };
 
     // Listen for game state updates
@@ -315,15 +329,21 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         return;
       }
 
+      // Handle different event types
       if (data.state?.type === 'dice_roll') {
         handleOpponentDiceRoll({ playerId: data.playerId, diceValue: data.state.diceValue });
       } else if (data.state?.type === 'move') {
-        handleOpponentMove({
-          playerId: data.playerId,
-          laneIndex: data.state.laneIndex,
-          diceValue: data.state.diceValue,
-          newPositions: data.state.positions || data.state.newPositions
-        });
+        const positions = data.state.positions || data.state.newPositions || data.state.lanePositions;
+        if (positions && Array.isArray(positions)) {
+          handleOpponentMove({
+            playerId: data.playerId,
+            laneIndex: data.state.laneIndex,
+            diceValue: data.state.diceValue,
+            newPositions: positions
+          });
+        } else {
+          console.warn('⚠️ Invalid move data:', data.state);
+        }
       } else if (data.state?.type === 'turn_change') {
         console.log('🔄 Turn change received:', data.state);
         setIsMyTurn(data.state.isMyTurn);
@@ -332,6 +352,17 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
           setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
         } else {
           setMessage(`${opponentName}-ийн ээлж. Хүлээж байна...`);
+        }
+      } else {
+        // Try to handle as direct move event (fallback)
+        if (data.state?.laneIndex !== undefined && data.state?.positions) {
+          console.log('📦 Handling as direct move event');
+          handleOpponentMove({
+            playerId: data.playerId,
+            laneIndex: data.state.laneIndex,
+            diceValue: data.state.diceValue || data.state.value,
+            newPositions: data.state.positions
+          });
         }
       }
     };
@@ -360,7 +391,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     const handleDirectMove = (data: any) => {
       console.log('📦 Direct move event:', data);
       if (data.playerId && data.playerId !== playerIdRef.current) {
-        if (data.laneIndex !== undefined && data.positions) {
+        if (data.laneIndex !== undefined && (data.positions || data.newPositions)) {
           handleOpponentMove({
             playerId: data.playerId,
             laneIndex: data.laneIndex,
@@ -371,12 +402,24 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       }
     };
 
+    // Listen for opponent's turn end (when they finish their move)
+    const handleOpponentTurnEnd = (data: any) => {
+      console.log('🔄 Opponent turn ended:', data);
+      if (data.playerId !== playerIdRef.current) {
+        setIsMyTurn(true);
+        setCurrentTurn('player');
+        setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
+      }
+    };
+
     socket.on('game:move', handleDirectMove);
+    socket.on('game:turn_end', handleOpponentTurnEnd);
 
     return () => {
       socket.off('game:state', handleGameState);
       socket.off('player:joined', handlePlayerJoined);
       socket.off('game:move', handleDirectMove);
+      socket.off('game:turn_end', handleOpponentTurnEnd);
     };
   }, [sessionIdRef.current, opponentName, gameStarted]);
 
@@ -540,11 +583,15 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     });
 
     // Submit result to backend if session exists
+    let gameResult = null;
     if (sessionIdRef.current) {
-      await submitGameResult(winner);
+      gameResult = await submitGameResult(winner);
     }
 
-    scheduleTimeout(() => onGameEnd(updatedPlayers), 1500);
+    // Pass game result to onGameEnd callback
+    scheduleTimeout(() => {
+      onGameEnd(updatedPlayers, gameResult);
+    }, 1500);
   };
 
   const finalizeDraw = async (customMessage: string) => {
@@ -579,7 +626,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       }
     }
 
-    scheduleTimeout(() => onGameEnd(players), 1500);
+    scheduleTimeout(() => onGameEnd(players, null), 1500);
   };
 
   const resetBoard = () => {
@@ -763,17 +810,20 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       setConsecutiveSixesPlayer(0);
     }
 
-    // Turn changes to opponent
-    setIsMyTurn(false);
-    setCurrentTurn('opponent');
-    setMessage(`${opponentName}-ийн ээлж. Хүлээж байна...`);
-    
-    // Send turn change to opponent
-    if (sessionIdRef.current && playerIdRef.current) {
-      wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, {
-        type: 'turn_change',
-        isMyTurn: false
-      });
+    // Turn changes to opponent (unless dice was 6)
+    if (value !== 6) {
+      setIsMyTurn(false);
+      setCurrentTurn('opponent');
+      setMessage(`${opponentName}-ийн ээлж. Хүлээж байна...`);
+      
+      // Send turn change to opponent
+      if (sessionIdRef.current && playerIdRef.current) {
+        wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, {
+          type: 'turn_change',
+          isMyTurn: false,
+          message: `${opponentName}-ийн ээлж`
+        });
+      }
     }
   };
 
