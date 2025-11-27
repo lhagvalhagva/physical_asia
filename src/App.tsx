@@ -268,6 +268,8 @@ export default function App() {
             onGameEnd={handleGameEnd}
             onHome={handleMainMenu}
             onLeaderboard={handleShowLeaderboard}
+            sessionId={matchSessionId || gameSession?._id || undefined}
+            gameSession={gameSession}
           />
         )}
 
