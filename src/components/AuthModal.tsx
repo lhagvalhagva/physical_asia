@@ -55,12 +55,12 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold mb-2">
+      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4 sm:mb-6">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2">
             {isLogin ? 'Нэвтрэх' : 'Бүртгүүлэх'}
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm sm:text-base">
             {isLogin ? 'Тавтай морилно уу!' : 'Шинэ хэрэглэгч үү?'}
           </p>
         </div>
@@ -117,13 +117,13 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <PlayfulButton
               type="submit"
               variant="primary"
               size="large"
               disabled={loading}
-              className="flex-1"
+              className="flex-1 w-full sm:w-auto"
             >
               {loading ? 'Хүлээгдэж байна...' : isLogin ? 'Нэвтрэх' : 'Бүртгүүлэх'}
             </PlayfulButton>
@@ -132,6 +132,7 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
               variant="secondary"
               onClick={onClose}
               disabled={loading}
+              className="w-full sm:w-auto"
             >
               Цуцлах
             </PlayfulButton>

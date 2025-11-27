@@ -15,7 +15,7 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center p-8 relative"
+      className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative"
       style={{
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
@@ -23,9 +23,9 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         backgroundRepeat: 'no-repeat',
       }}
     >
-      <div className="text-center mb-12">
+      <div className="text-center mb-6 sm:mb-8 md:mb-12">
         <h1
-          className="text-8xl mb-4"
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-2 sm:mb-3 md:mb-4"
           style={{
             fontFamily: "'Arial Black', 'Impact', 'Oswald', 'Roboto', sans-serif",
             fontWeight: '900',
@@ -38,15 +38,15 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 w-full max-w-5xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-6 sm:mb-8 md:mb-12 w-full max-w-5xl px-4">
         <div
-          className="bg-white rounded-[2rem] p-3 shadow-2xl transform transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden"
+          className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-2xl transform transition-all duration-300 active:scale-95 sm:hover:scale-105 cursor-pointer overflow-hidden touch-manipulation"
           onClick={() => onSelectGame('rope')}
           style={{
-            border: '6px solid red',
+            border: '3px solid red',
           }}
         >
-          <div className="w-full h-48 rounded-2xl overflow-hidden shadow-lg">
+          <div className="w-full h-32 sm:h-40 md:h-48 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden shadow-lg">
             <img 
               src={tugofwarImage} 
               alt="Tug of War" 
@@ -56,13 +56,13 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         </div>
 
         <div
-          className="bg-white rounded-[2rem] p-3 shadow-2xl transform transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden"
+          className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-2xl transform transition-all duration-300 active:scale-95 sm:hover:scale-105 cursor-pointer overflow-hidden touch-manipulation"
           onClick={() => onSelectGame('balloon')}
           style={{
-            border: '6px solid red',
+            border: '3px solid red',
           }}
         >
-          <div className="w-full h-48 rounded-2xl overflow-hidden shadow-lg">
+          <div className="w-full h-32 sm:h-40 md:h-48 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden shadow-lg">
             <img 
               src={waterballoonImage} 
               alt="Water Balloon" 
@@ -72,13 +72,13 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         </div>
 
         <div
-          className="bg-white rounded-[2rem] p-3 shadow-2xl transform transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden"
+          className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-2xl transform transition-all duration-300 active:scale-95 sm:hover:scale-105 cursor-pointer overflow-hidden touch-manipulation"
           onClick={() => onSelectGame('cargo')}
           style={{
-            border: '6px solid red',
+            border: '3px solid red',
           }}
         >
-          <div className="w-full h-48 rounded-2xl overflow-hidden shadow-lg">
+          <div className="w-full h-32 sm:h-40 md:h-48 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden shadow-lg">
             <img 
               src={cargopushImage} 
               alt="Cargo Push" 
@@ -88,15 +88,15 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
         </div>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-md px-4">
         {onStartMatchmaking && (
           <button
             onClick={onStartMatchmaking}
-            className="px-12 py-6 text-2xl rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold"
+            className="px-6 sm:px-8 md:px-12 py-4 sm:py-5 md:py-6 text-base sm:text-lg md:text-xl lg:text-2xl rounded-xl sm:rounded-2xl shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold touch-manipulation"
             style={{
               backgroundColor: '#4D96FF',
               color: '#FFFFFF',
-              border: '4px solid #3B7FE8',
+              border: '3px solid #3B7FE8',
               boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 -4px 0 rgba(0, 0, 0, 0.2)',
             }}
           >
@@ -107,11 +107,11 @@ export function MainMenu({ onSelectGame, onShowLeaderboard, onStartMatchmaking }
           onClick={onShowLeaderboard}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="px-12 py-6 text-2xl rounded-[2rem] shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold"
+          className="px-6 sm:px-8 md:px-12 py-4 sm:py-5 md:py-6 text-base sm:text-lg md:text-xl lg:text-2xl rounded-xl sm:rounded-2xl shadow-lg transform transition-all duration-150 active:scale-95 hover:scale-105 font-bold touch-manipulation"
           style={{
             backgroundColor: isHovered ? '#FF0000' : '#FFFFFF',
             color: isHovered ? '#FFFFFF' : '#000000',
-            border: '4px solid #FF0000',
+            border: '3px solid #FF0000',
             boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 -4px 0 rgba(0, 0, 0, 0.2)',
           }}
         >

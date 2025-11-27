@@ -51,10 +51,10 @@ export function Matchmaking({ onMatchFound, onCancel }: MatchmakingProps) {
   if (matchFound && sessionId) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl text-center">
-          <h2 className="text-3xl font-bold mb-4 text-green-600">🎮 Match Found! 🎮</h2>
-          <p className="text-gray-700 mb-2">Session ID: {sessionId}</p>
-          <p className="text-gray-700 mb-6">Opponent ID: {opponentId}</p>
+        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl text-center">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-green-600">🎮 Match Found! 🎮</h2>
+          <p className="text-gray-700 mb-2 text-sm sm:text-base">Session ID: <span className="text-xs sm:text-sm break-all">{sessionId}</span></p>
+          <p className="text-gray-700 mb-4 sm:mb-6 text-sm sm:text-base">Opponent ID: <span className="text-xs sm:text-sm break-all">{opponentId}</span></p>
           <PlayfulButton
             onClick={() => {
               resetMatch();
@@ -72,8 +72,8 @@ export function Matchmaking({ onMatchFound, onCancel }: MatchmakingProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl">
-        <h2 className="text-2xl font-bold mb-6 text-center">Find Match</h2>
+      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Find Match</h2>
         
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
@@ -112,12 +112,12 @@ export function Matchmaking({ onMatchFound, onCancel }: MatchmakingProps) {
               </select>
             </div>
 
-            <div className="flex gap-3">
-              <PlayfulButton onClick={handleStartSearch} variant="primary" size="large" className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <PlayfulButton onClick={handleStartSearch} variant="primary" size="large" className="flex-1 w-full sm:w-auto">
                 Find Match
               </PlayfulButton>
               {onCancel && (
-                <PlayfulButton onClick={onCancel} variant="secondary">
+                <PlayfulButton onClick={onCancel} variant="secondary" className="w-full sm:w-auto">
                   Cancel
                 </PlayfulButton>
               )}

@@ -203,22 +203,22 @@ export default function App() {
         )}
 
         {isAuthenticated && (
-          <div className="fixed top-4 right-4 z-40 flex gap-2">
+          <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-40 flex flex-col sm:flex-row gap-2">
             {playerProfile && (
-              <div className="bg-white rounded-xl px-4 py-2 shadow-lg flex items-center gap-2">
+              <div className="bg-white rounded-lg sm:rounded-xl px-2 sm:px-4 py-1.5 sm:py-2 shadow-lg flex items-center gap-1 sm:gap-2">
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-bold"
                   style={{ background: '#4D96FF' }}
                 >
                   {playerProfile.username.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-sm font-medium">{playerProfile.username}</span>
-                <span className="text-xs text-gray-500">Lv.{playerProfile.level || 1}</span>
+                <span className="text-xs sm:text-sm font-medium hidden sm:inline">{playerProfile.username}</span>
+                <span className="text-xs text-gray-500 hidden sm:inline">Lv.{playerProfile.level || 1}</span>
               </div>
             )}
             <button
               onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-colors text-sm"
+              className="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl active:bg-red-600 sm:hover:bg-red-600 transition-colors text-xs sm:text-sm touch-manipulation"
             >
               Гарах
             </button>

@@ -38,10 +38,10 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
-      <div className="text-center mb-12 animate-pop">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
+      <div className="text-center mb-6 sm:mb-8 md:mb-12 animate-pop">
         <h1
-          className="text-7xl mb-4"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl mb-2 sm:mb-3 md:mb-4"
           style={{
             background: 'linear-gradient(135deg, #FFD93D 0%, #FF6B6B 100%)',
             WebkitBackgroundClip: 'text',
@@ -50,17 +50,17 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
         >
           🎉 Тоглоом дууслаа! 🎉
         </h1>
-        <p className="text-2xl text-gray-700">Эцсийн үр дүн</p>
+        <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700">Эцсийн үр дүн</p>
       </div>
 
-      <div className="space-y-6 w-full max-w-2xl mb-12">
+      <div className="space-y-3 sm:space-y-4 md:space-y-6 w-full max-w-2xl mb-6 sm:mb-8 md:mb-12 px-4">
         {sortedPlayers.map((player, index) => (
           <div
             key={player.name}
             className={`
               bg-white
-              rounded-[2rem]
-              p-6
+              rounded-xl sm:rounded-2xl
+              p-4 sm:p-5 md:p-6
               shadow-2xl
               transform
               transition-all
@@ -73,31 +73,31 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
               animationDelay: `${index * 0.1}s`,
             }}
           >
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col items-center">
+            <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
+              <div className="flex flex-col items-center flex-shrink-0">
                 {getRankIcon(index)}
-                <div className="text-4xl mt-2">{getRankEmoji(index)}</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl mt-1 sm:mt-2">{getRankEmoji(index)}</div>
               </div>
 
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
+                className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
                 style={{
                   background: player.avatarColor,
-                  border: '4px solid white',
+                  border: '3px solid white',
                 }}
               >
-                <span className="text-white text-3xl">{player.name.charAt(0)}</span>
+                <span className="text-white text-lg sm:text-xl md:text-2xl lg:text-3xl">{player.name.charAt(0)}</span>
               </div>
 
-              <div className="flex-1">
-                <h3 className="text-gray-800 mb-1">{player.name}</h3>
-                <div className="text-sm text-gray-600">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-gray-800 mb-1 text-sm sm:text-base md:text-lg truncate">{player.name}</h3>
+                <div className="text-xs sm:text-sm text-gray-600">
                   {index === 0 ? 'Ялагч!' : `${index + 1}-р байр`}
                 </div>
               </div>
 
               <div
-                className="text-5xl"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold flex-shrink-0"
                 style={{
                   background: 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%)',
                   WebkitBackgroundClip: 'text',
@@ -111,11 +111,11 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
         ))}
       </div>
 
-      <div className="flex gap-4">
-        <PlayfulButton onClick={onPlayAgain} variant="secondary" size="large">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-md px-4">
+        <PlayfulButton onClick={onPlayAgain} variant="secondary" size="large" className="w-full sm:w-auto">
           🔄 Дахин тоглох
         </PlayfulButton>
-        <PlayfulButton onClick={onMainMenu} variant="primary" size="large">
+        <PlayfulButton onClick={onMainMenu} variant="primary" size="large" className="w-full sm:w-auto">
           🏠 Үндсэн цэс
         </PlayfulButton>
       </div>
