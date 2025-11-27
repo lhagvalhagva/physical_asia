@@ -48,9 +48,9 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
             WebkitTextFillColor: 'transparent',
           }}
         >
-          🎉 Game Over! 🎉
+          🎉 Тоглоом дууслаа! 🎉
         </h1>
-        <p className="text-2xl text-gray-700">Final Results</p>
+        <p className="text-2xl text-gray-700">Эцсийн үр дүн</p>
       </div>
 
       <div className="space-y-6 w-full max-w-2xl mb-12">
@@ -92,7 +92,7 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
               <div className="flex-1">
                 <h3 className="text-gray-800 mb-1">{player.name}</h3>
                 <div className="text-sm text-gray-600">
-                  {index === 0 ? 'Winner!' : `Place #${index + 1}`}
+                  {index === 0 ? 'Ялагч!' : `${index + 1}-р байр`}
                 </div>
               </div>
 
@@ -113,10 +113,10 @@ export function ResultScreen({ players, onPlayAgain, onMainMenu }: ResultScreenP
 
       <div className="flex gap-4">
         <PlayfulButton onClick={onPlayAgain} variant="secondary" size="large">
-          🔄 Play Again
+          🔄 Дахин тоглох
         </PlayfulButton>
         <PlayfulButton onClick={onMainMenu} variant="primary" size="large">
-          🏠 Main Menu
+          🏠 Үндсэн цэс
         </PlayfulButton>
       </div>
     </div>

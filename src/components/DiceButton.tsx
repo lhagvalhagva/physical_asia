@@ -83,8 +83,23 @@ export function DiceButton({ onRoll, disabled = false, isActive = false }: DiceB
         strokeWidth={3} 
       />
       
-      <div className="text-xs mt-2 text-gray-600 font-bold">
-        {isRolling ? 'ROLLING...' : (currentFace ? `RESULT: ${currentFace}` : 'ROLL')}
+      <div className="text-xs mt-2 text-gray-700 font-bold">
+        {isRolling ? (
+          <span className="flex items-center gap-1 text-indigo-600">
+            <span className="animate-spin">🎲</span>
+            <span>Эргэж байна...</span>
+          </span>
+        ) : currentFace ? (
+          <span className="flex items-center gap-1 text-green-600">
+            <span>✅</span>
+            <span>Үр дүн: {currentFace}</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-1">
+            <span>🎲</span>
+            <span>Шоо шидэх</span>
+          </span>
+        )}
       </div>
       
       {isActive && (

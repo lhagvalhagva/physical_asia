@@ -20,7 +20,7 @@ export function MainMenu({ onSelectGame, onShowLeaderboard }: MainMenuProps) {
             textShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
           }}
         >
-          🎮 Party Games 🎮
+          🎮 Physical Art 🎮
         </h1>
         <p className="text-xl text-gray-700">Choose your challenge!</p>
       </div>

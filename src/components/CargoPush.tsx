@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PlayfulButton } from './PlayfulButton';
 import { PlayerCard } from './PlayerCard';
 import { TopBar } from './TopBar';
+import { DiceButton } from './DiceButton';
 
 interface Player {
   name: string;
@@ -47,35 +48,42 @@ interface DiceFaceProps {
 }
 
 const DiceFace = ({ owner, value, active }: DiceFaceProps) => {
-  const title = owner === 'player' ? 'Таны шоо' : 'AI шоо';
-  const accent = owner === 'player' ? 'text-indigo-500' : 'text-rose-500';
+  const title = owner === 'player' ? '🎲 Таны шоо' : '🤖 AI шоо';
+  const accent = owner === 'player' ? 'text-indigo-600' : 'text-rose-600';
   const border =
     owner === 'player'
-      ? 'border-indigo-200 bg-white'
-      : 'border-rose-200 bg-rose-50';
+      ? 'border-indigo-300 bg-gradient-to-br from-indigo-50 to-white'
+      : 'border-rose-300 bg-gradient-to-br from-rose-50 to-white';
 
   return (
-    <div className={`flex flex-col items-center gap-2 ${active ? '' : 'opacity-60'}`}>
-      <div className={`text-xs uppercase tracking-wide font-semibold ${accent}`}>{title}</div>
+    <div className={`flex flex-col items-center gap-3 ${active ? '' : 'opacity-50'}`}>
+      <div className={`text-sm font-bold ${accent} ${active ? 'animate-pulse' : ''}`}>
+        {title}
+      </div>
       <div
-        className={`relative w-28 h-28 rounded-[1.4rem] border-8 ${border} shadow-2xl flex items-center justify-center transition-all ${
-          active ? 'scale-100' : 'scale-95'
-        }`}
+        className={`relative w-32 h-32 rounded-2xl border-4 ${border} shadow-xl flex items-center justify-center transition-all duration-300 ${
+          active ? 'scale-105 ring-4 ring-offset-2' : 'scale-100'
+        } ${owner === 'player' ? 'ring-indigo-200' : 'ring-rose-200'}`}
         style={{
-          boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)',
+          boxShadow: active 
+            ? '0 20px 60px rgba(15, 23, 42, 0.3)' 
+            : '0 10px 30px rgba(15, 23, 42, 0.15)',
         }}
       >
         {value === null ? (
-          <span className="text-4xl text-slate-200 font-bold">–</span>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-5xl text-slate-300">🎲</span>
+            <span className="text-xs text-slate-400 font-medium">Хүлээнэ...</span>
+          </div>
         ) : (
-          <div className="grid grid-cols-3 grid-rows-3 gap-1 w-20 h-20">
+          <div className="grid grid-cols-3 grid-rows-3 gap-1.5 w-24 h-24">
             {Array.from({ length: 9 }).map((_, idx) => (
               <div key={idx} className="flex items-center justify-center">
                 {DICE_DOTS[value]?.includes(idx) && (
                   <span
-                    className={`block w-3 h-3 rounded-full ${
-                      owner === 'player' ? 'bg-indigo-500' : 'bg-rose-500'
-                    }`}
+                    className={`block w-4 h-4 rounded-full shadow-md ${
+                      owner === 'player' ? 'bg-indigo-600' : 'bg-rose-600'
+                    } ${active ? 'animate-pulse' : ''}`}
                   />
                 )}
               </div>
@@ -83,8 +91,18 @@ const DiceFace = ({ owner, value, active }: DiceFaceProps) => {
           </div>
         )}
       </div>
-      <div className="text-xs uppercase tracking-wide text-slate-400">
-        {value === null ? 'Шидэлтийг хүлээнэ' : `Үр дүн: ${value}`}
+      <div className={`text-sm font-semibold ${active ? accent : 'text-slate-400'}`}>
+        {value === null ? (
+          <span className="flex items-center gap-1">
+            <span>⏳</span>
+            <span>Шоо шидэх хүлээнэ</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <span className="text-lg">✅</span>
+            <span>Үр дүн: <span className="text-xl font-bold">{value}</span></span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -99,7 +117,6 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
   const [currentTurn, setCurrentTurn] = useState<Turn>('player');
   const [gameOver, setGameOver] = useState(false);
   const [selectedLane, setSelectedLane] = useState<number | null>(null);
-  const [timeLeft, setTimeLeft] = useState(60);
   const [playerTimeLeft, setPlayerTimeLeft] = useState(30);
   const [opponentTimeLeft, setOpponentTimeLeft] = useState(30);
   const [moveTimerLeft, setMoveTimerLeft] = useState<number | null>(null);
@@ -137,45 +154,16 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
 
   useEffect(() => {
     if (gameOverRef.current) return;
-
-    const id = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (gameOverRef.current) return prev;
-        return prev > 0 ? prev - 1 : 0;
-      });
-    }, 1000);
-
-    return () => clearInterval(id);
-  }, [gameOver]);
-
-  useEffect(() => {
-    if (gameOverRef.current) return;
-    if (timeLeft <= 0) {
-      handleTimeoutResolution();
-    }
-  }, [timeLeft]);
-
-  // Тоглогч бүрт тусдаа цаг
-  useEffect(() => {
-    if (gameOverRef.current) return;
     if (currentTurn !== 'player') return;
 
     const id = setInterval(() => {
       setPlayerTimeLeft((prev) => {
         if (gameOverRef.current) return prev;
-        if (prev <= 0) return 0;
-        const newTime = prev - 1;
-        
-        // 5 секунд алдвал (25 секунд үлдэхэд) ээлж алдана
-        if (newTime <= 25) {
-          setMessage('⏰ Цаг дууслаа. Ээлж AI-д шилжинэ.');
-          setCurrentTurn('opponent');
-          setPlayerDice(null);
-          setPendingMoveValue(null);
+        if (prev <= 0) {
+          handlePlayerTimeOut();
           return 0;
         }
-        
-        return newTime;
+        return prev - 1;
       });
     }, 1000);
 
@@ -189,23 +177,49 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     const id = setInterval(() => {
       setOpponentTimeLeft((prev) => {
         if (gameOverRef.current) return prev;
-        if (prev <= 0) return 0;
-        const newTime = prev - 1;
-        
-        // 5 секунд алдвал (25 секунд үлдэхэд) ээлж алдана
-        if (newTime <= 25) {
-          setMessage('⏰ AI-ийн цаг дууслаа. Таны ээлж.');
-          setCurrentTurn('player');
-          setOpponentDice(null);
+        if (prev <= 0) {
+          // Цаг дууслаа - ээлж тоглогч рүү шилжинэ
+          handleOpponentTimeOut();
           return 0;
         }
-        
-        return newTime;
+        return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(id);
   }, [currentTurn, gameOver]);
+
+  const handlePlayerTimeOut = () => {
+    if (gameOverRef.current) return;
+    setMessage('⏰ Таны цаг дууслаа. Ээлж AI-д шилжинэ.');
+    setCurrentTurn('opponent');
+    setPlayerDice(null);
+    setPendingMoveValue(null);
+    setMoveTimerLeft(null);
+    // AI-ийн цаг зөвхөн зогсоож/эхлүүлэх, reset хийхгүй
+    // useEffect дээр AI-ийн цаг автоматаар эхлэнэ
+    
+    // Хугацаа дуусахад хайрцгийн байрлалыг харж ялагчийг тодорхойлох
+    scheduleTimeout(() => {
+      if (gameOverRef.current) return;
+      handleTimeoutResolution();
+    }, 1000);
+  };
+
+  const handleOpponentTimeOut = () => {
+    if (gameOverRef.current) return;
+    setMessage('⏰ AI-ийн цаг дууслаа. Таны ээлж.');
+    setCurrentTurn('player');
+    setOpponentDice(null);
+    // Тоглогчийн цаг зөвхөн зогсоож/эхлүүлэх, reset хийхгүй
+    // useEffect дээр тоглогчийн цаг автоматаар эхлэнэ
+    
+    // Хугацаа дуусахад хайрцгийн байрлалыг харж ялагчийг тодорхойлох
+    scheduleTimeout(() => {
+      if (gameOverRef.current) return;
+      handleTimeoutResolution();
+    }, 1000);
+  };
 
   // Шоо шидэх болгонд 5 секунд timer
   useEffect(() => {
@@ -262,18 +276,31 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
         : `-30-д очсон тул AI яллаа.`);
     setMessage(victoryMessage);
 
+    // Бодит тооцоолол: хайрцгийн байрлал, зайг харж score тооцох
+    const snapshot = lanePositionsRef.current;
+    const positiveLanes = snapshot.filter((pos) => pos > 0);
+    const negativeLanes = snapshot.filter((pos) => pos < 0);
+    
+    const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
+    const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
+    
+    // Тоглогчийн score: түрсэн зай + хайрцгийн тоо * 10
+    const playerScore = positiveDistance + (positiveLanes.length * 10);
+    // AI-ийн score: түрсэн зай + хайрцгийн тоо * 10
+    const opponentScore = negativeDistance + (negativeLanes.length * 10);
+
     const updatedPlayers = players.map((p, index) => {
       if (index === 0) {
         return {
           ...p,
-          score: p.score + (winner === 'player' ? 500 : 100),
+          score: playerScore,
           progress: winner === 'player' ? 100 : Math.max(0, p.progress - 20),
         };
       }
       if (index === 1) {
         return {
           ...p,
-          score: p.score + (winner === 'opponent' ? 400 : 50),
+          score: opponentScore,
           progress: winner === 'opponent' ? 100 : p.progress,
         };
       }
@@ -293,7 +320,35 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setPendingMoveValue(null);
     setMessage(customMessage);
 
-    scheduleTimeout(() => onGameEnd(players), 1500);
+    const snapshot = lanePositionsRef.current;
+    const positiveLanes = snapshot.filter((pos) => pos > 0);
+    const negativeLanes = snapshot.filter((pos) => pos < 0);
+    
+    const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
+    const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
+    
+    // Тоглогчийн score: түрсэн зай + хайрцгийн тоо * 10
+    const playerScore = positiveDistance + (positiveLanes.length * 10);
+    // AI-ийн score: түрсэн зай + хайрцгийн тоо * 10
+    const opponentScore = negativeDistance + (negativeLanes.length * 10);
+
+    const updatedPlayers = players.map((p, index) => {
+      if (index === 0) {
+        return {
+          ...p,
+          score: playerScore, // Бодит тоо
+        };
+      }
+      if (index === 1) {
+        return {
+          ...p,
+          score: opponentScore, // Бодит тоо
+        };
+      }
+      return p;
+    });
+
+    scheduleTimeout(() => onGameEnd(updatedPlayers), 1500);
   };
 
   const resetBoard = () => {
@@ -308,7 +363,6 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setSelectedLane(null);
     setCurrentTurn('player');
     setGameOver(false);
-    setTimeLeft(60);
     setPlayerTimeLeft(30);
     setOpponentTimeLeft(30);
     setMoveTimerLeft(null);
@@ -317,52 +371,47 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setMessage('');
   };
 
+  // Хугацаа дуусахад хайрцгийн байрлалыг харж ялагчийг тодорхойлох
   const handleTimeoutResolution = () => {
     if (gameOverRef.current) return;
 
     const snapshot = lanePositionsRef.current;
-    // positiveLanes: таны талд (эерэг чиглэлд) байгаа хайрцгууд
-    // negativeLanes: AI талд (сөрөг чиглэлд) байгаа хайрцгууд
     const positiveLanes = snapshot.filter((pos) => pos > 0);
     const negativeLanes = snapshot.filter((pos) => pos < 0);
 
-    const positiveCount = positiveLanes.length; // Таны талд хэдэн хайрцаг байна
-    const negativeCount = negativeLanes.length; // AI талд хэдэн хайрцаг байна
+    const positiveCount = positiveLanes.length;
+    const negativeCount = negativeLanes.length;
 
     const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
     const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
 
     // Бүх хайрцгууд төвд байвал тэнцэх
     if (positiveCount === 0 && negativeCount === 0) {
-      finalizeDraw('⏳ 1 минут дууслаа. Хайрцгууд төвд байсан тул тэнцэв.');
+      finalizeDraw('⏳ Цаг дууслаа. Хайрцгууд төвд байсан тул тэнцэв.');
       return;
     }
 
     // Дүрэм: Аль талд илүү хайрцаг байвал тэр тал ялна
-    // positiveCount > negativeCount → таны талд илүү хайрцаг → та ялна
     if (positiveCount > negativeCount) {
-      finalizeGame('player', undefined, '⏳ 1 минут дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
+      finalizeGame('player', undefined, '⏳ Цаг дууслаа. Таны талд хайрцаг илүү тул та яллаа.');
     } 
-    // negativeCount > positiveCount → AI талд илүү хайрцаг → AI ялна
     else if (negativeCount > positiveCount) {
-      finalizeGame('opponent', undefined, '⏳ 1 минут дууслаа. AI талд хайрцаг илүү тул AI яллаа.');
+      finalizeGame('opponent', undefined, '⏳ Цаг дууслаа. AI талд хайрцаг илүү тул AI яллаа.');
     } 
     // Тэнцүү тоотой бол зайг харна
-    // positiveDistance > negativeDistance → таны тал илүү ихээр түрсэн → та ялна
     else if (positiveDistance > negativeDistance) {
       finalizeGame('player', undefined, '⏳ Тэнцүү тоотой ч таны тал илүү ихээр түрсэн тул та яллаа.');
     } 
-    // negativeDistance > positiveDistance → AI илүү ихээр түрсэн → AI ялна
     else if (negativeDistance > positiveDistance) {
       finalizeGame('opponent', undefined, '⏳ Тэнцүү тоотой ч AI илүү ихээр түрсэн тул AI яллаа.');
     } 
     // Бүх зүйл тэнцүү
     else {
-      finalizeDraw('⏳ 1 минут дууслаа. Үр дүн тэнцэв.');
+      finalizeDraw('⏳ Цаг дууслаа. Үр дүн тэнцэв.');
     }
   };
 
-  const handleRollDice = () => {
+  const handleRollDice = (value: number) => {
     if (gameOver) return;
     if (currentTurn !== 'player') {
       setMessage('AI шидэж байна, түр хүлээнэ үү.');
@@ -373,7 +422,6 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
       return;
     }
 
-    const value = rollDice();
     setPlayerDice(value);
 
     if (value === 6) {
@@ -394,6 +442,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
     setPendingMoveValue(value);
     setMoveTimerLeft(5);
     setMessage(`Шоо ${value} буулаа. Хайрцаг дээр дараад хөдөлгөөрэй.`);
+    // Шоо шидсэний дараа цаг зогсоохгүй, үргэлжлүүлнэ
   };
 
   const handlePlayerMove = (laneIndex: number) => {
@@ -431,8 +480,10 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
       setConsecutiveSixesPlayer(0);
     }
 
+    // Ээлж солигдох үед цаг солигдоно (reset хийхгүй, зөвхөн зогсоож/эхлүүлэх)
     setMessage('AI ээлжээ бэлдэж байна...');
     setCurrentTurn('opponent');
+    // AI-ийн цаг useEffect дээр автоматаар эхлэнэ
   };
 
   const runOpponentTurn = () => {
@@ -488,6 +539,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
         setOpponentDice(null);
         setCurrentTurn('player');
         setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
+        // Тоглогчийн цаг useEffect дээр автоматаар эхлэнэ
       }
     }, 600);
   };
@@ -568,14 +620,13 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard }: CargoPu
                 )}
           </div>
 
-              <PlayfulButton
-                onClick={handleRollDice}
-                variant="primary"
-                size="large"
-                disabled={rollButtonDisabled}
-                className="w-full"
-                children="🎲 ШОО ШИДЭХ"
-              />
+              <div className="flex justify-center">
+                <DiceButton
+                  onRoll={handleRollDice}
+                  disabled={rollButtonDisabled}
+                  isActive={currentTurn === 'player' && !gameOver && pendingMoveValue === null}
+                />
+              </div>
             </div>
           </div>
         </div>
