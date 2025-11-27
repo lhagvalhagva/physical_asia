@@ -264,7 +264,12 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       
       console.log('🎲 Opponent rolled dice:', data.diceValue);
       setOpponentDice(data.diceValue);
+      setIsOpponentRolling(false);
+      setOpponentRollingValue(null);
       setMessage(`🎲 ${opponentName} ${data.diceValue} буулгалаа. Хайрцаг сонгох хүлээнэ...`);
+      // Opponent's turn - wait for their move
+      setIsMyTurn(false);
+      setCurrentTurn('opponent');
     };
 
     // Listen for opponent's move
@@ -276,6 +281,8 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       setLanePositions(data.newPositions);
       setSelectedLane(data.laneIndex);
       setOpponentDice(null);
+      setIsOpponentRolling(false);
+      setOpponentRollingValue(null);
 
       // Check for win condition
       if (data.newPositions[data.laneIndex] <= -MAX_DISTANCE) {
@@ -283,10 +290,15 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         return;
       }
 
-      // Turn management
+      // Turn management - Switch to player's turn if dice is not 6
       if (data.diceValue === 6) {
         setMessage(`🎲 ${opponentName} 6 буусан тул дахин шиднэ.`);
+        // Keep opponent's turn
+        setIsMyTurn(false);
+        setCurrentTurn('opponent');
       } else {
+        // Switch to player's turn
+        console.log('🔄 Switching to player turn after opponent move');
         setIsMyTurn(true);
         setCurrentTurn('player');
         setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
@@ -294,19 +306,33 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     };
 
     // Listen for game state updates
-    const handleGameState = (data: { playerId: string; state: any }) => {
-      if (data.state?.type === 'dice_roll' && data.playerId !== playerIdRef.current) {
+    const handleGameState = (data: { playerId: string; state: any; timestamp?: number }) => {
+      console.log('📡 Received game state:', data);
+      
+      // Ignore own actions
+      if (data.playerId === playerIdRef.current) {
+        console.log('⏭️ Ignoring own action');
+        return;
+      }
+
+      if (data.state?.type === 'dice_roll') {
         handleOpponentDiceRoll({ playerId: data.playerId, diceValue: data.state.diceValue });
-      } else if (data.state?.type === 'move' && data.playerId !== playerIdRef.current) {
+      } else if (data.state?.type === 'move') {
         handleOpponentMove({
           playerId: data.playerId,
           laneIndex: data.state.laneIndex,
           diceValue: data.state.diceValue,
-          newPositions: data.state.positions
+          newPositions: data.state.positions || data.state.newPositions
         });
       } else if (data.state?.type === 'turn_change') {
+        console.log('🔄 Turn change received:', data.state);
         setIsMyTurn(data.state.isMyTurn);
         setCurrentTurn(data.state.isMyTurn ? 'player' : 'opponent');
+        if (data.state.isMyTurn) {
+          setMessage('Таны ээлж. Шоо шидэж зам сонгоорой.');
+        } else {
+          setMessage(`${opponentName}-ийн ээлж. Хүлээж байна...`);
+        }
       }
     };
 
@@ -330,11 +356,29 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     socket.on('game:state', handleGameState);
     socket.on('player:joined', handlePlayerJoined);
 
+    // Also listen for direct move events (in case backend sends different structure)
+    const handleDirectMove = (data: any) => {
+      console.log('📦 Direct move event:', data);
+      if (data.playerId && data.playerId !== playerIdRef.current) {
+        if (data.laneIndex !== undefined && data.positions) {
+          handleOpponentMove({
+            playerId: data.playerId,
+            laneIndex: data.laneIndex,
+            diceValue: data.diceValue || data.value,
+            newPositions: data.positions || data.newPositions
+          });
+        }
+      }
+    };
+
+    socket.on('game:move', handleDirectMove);
+
     return () => {
       socket.off('game:state', handleGameState);
       socket.off('player:joined', handlePlayerJoined);
+      socket.off('game:move', handleDirectMove);
     };
-  }, [sessionIdRef.current, opponentName]);
+  }, [sessionIdRef.current, opponentName, gameStarted]);
 
 
   // Шатрын цаг: зөвхөн одоогийн ээлжийн тоглогчийн цаг явна
@@ -382,11 +426,20 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     if (moveTimerLeft === null) return;
     if (moveTimerLeft <= 0) {
       setMoveTimerLeft(null);
-      if (currentTurn === 'player' && pendingMoveValue !== null) {
-        setMessage('⏰ Цаг дууслаа. Ээлж AI-д шилжинэ.');
+      if (currentTurn === 'player' && pendingMoveValue !== null && isMyTurn) {
+        setMessage(`⏰ Цаг дууслаа. Ээлж ${opponentName}-д шилжинэ.`);
+        setIsMyTurn(false);
         setCurrentTurn('opponent');
         setPlayerDice(null);
         setPendingMoveValue(null);
+        
+        // Send turn change to opponent
+        if (sessionIdRef.current && playerIdRef.current) {
+          wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, {
+            type: 'turn_change',
+            isMyTurn: false
+          });
+        }
       }
       return;
     }
@@ -396,11 +449,20 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         if (gameOverRef.current) return prev ?? null;
         if (prev === null) return null;
         if (prev <= 0) {
-          if (currentTurn === 'player' && pendingMoveValue !== null) {
-            setMessage('⏰ Цаг дууслаа. Ээлж AI-д шилжинэ.');
+          if (currentTurn === 'player' && pendingMoveValue !== null && isMyTurn) {
+            setMessage(`⏰ Цаг дууслаа. Ээлж ${opponentName}-д шилжинэ.`);
+            setIsMyTurn(false);
             setCurrentTurn('opponent');
             setPlayerDice(null);
             setPendingMoveValue(null);
+            
+            // Send turn change to opponent
+            if (sessionIdRef.current && playerIdRef.current) {
+              wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, {
+                type: 'turn_change',
+                isMyTurn: false
+              });
+            }
           }
           return null;
         }
@@ -409,7 +471,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
     }, 1000);
 
     return () => clearInterval(id);
-  }, [moveTimerLeft, currentTurn, pendingMoveValue]);
+  }, [moveTimerLeft, currentTurn, pendingMoveValue, isMyTurn, opponentName]);
 
   // Submit game result to backend
   const submitGameResult = async (winner: Turn) => {
@@ -552,7 +614,7 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
   const handleOpponentTimeOut = () => {
     if (gameOverRef.current) return;
-    setMessage('⏰ AI-ийн цаг дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.');
+    setMessage(`⏰ ${opponentName}-ийн цаг дууслаа. Хайрцгийн байрлалаар ялагчийг тодорхойлно.`);
     
     scheduleTimeout(() => {
       if (gameOverRef.current) return;
@@ -565,12 +627,12 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     const snapshot = lanePositionsRef.current;
     // positiveLanes: таны талд (эерэг чиглэлд) байгаа хайрцгууд
-    // negativeLanes: AI талд (сөрөг чиглэлд) байгаа хайрцгууд
+    // negativeLanes: Opponent талд (сөрөг чиглэлд) байгаа хайрцгууд
     const positiveLanes = snapshot.filter((pos) => pos > 0);
     const negativeLanes = snapshot.filter((pos) => pos < 0);
 
     const positiveCount = positiveLanes.length; // Таны талд хэдэн хайрцаг байна
-    const negativeCount = negativeLanes.length; // AI талд хэдэн хайрцаг байна
+    const negativeCount = negativeLanes.length; // Opponent талд хэдэн хайрцаг байна
 
     const positiveDistance = positiveLanes.reduce((sum, pos) => sum + pos, 0);
     const negativeDistance = negativeLanes.reduce((sum, pos) => sum + Math.abs(pos), 0);
@@ -716,6 +778,11 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
   };
 
   // Removed AI opponent logic - now handled via WebSocket
+
+  // Debug: Log turn changes
+  useEffect(() => {
+    console.log('🔄 Turn changed:', { isMyTurn, currentTurn, opponentName });
+  }, [isMyTurn, currentTurn, opponentName]);
 
   const playerStatus = isMyTurn && !gameOver ? 'active' : 'waiting';
   const rollButtonDisabled = gameOver || !isMyTurn || currentTurn !== 'player' || pendingMoveValue !== null;
