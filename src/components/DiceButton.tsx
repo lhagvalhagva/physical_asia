@@ -94,12 +94,7 @@ export function DiceButton({ onRoll, disabled = false, isActive = false }: DiceB
             <span>✅</span>
             <span>Үр дүн: {currentFace}</span>
           </span>
-        ) : (
-          <span className="flex items-center gap-1">
-            <span>🎲</span>
-            <span>Шоо шидэх</span>
-          </span>
-        )}
+        ) : null}
       </div>
       
       {isActive && (
