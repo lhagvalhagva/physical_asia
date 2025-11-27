@@ -1,50 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { PlayfulButton } from './PlayfulButton';
-
-interface LeaderboardEntry {
-  rank: number;
-  name: string;
-  score: number;
-  avatarColor: string;
-}
+import { leaderboardService } from '../api/services/leaderboard';
+import { authService } from '../api/services/auth';
+import type { LeaderboardEntry } from '../types/api';
 
 interface LeaderboardProps {
   onClose: () => void;
 }
 
-const mockData = {
-  daily: [
-    { rank: 1, name: 'ProGamer99', score: 2850, avatarColor: '#FF6B6B' },
-    { rank: 2, name: 'ClickMaster', score: 2640, avatarColor: '#FFD93D' },
-    { rank: 3, name: 'SpeedDemon', score: 2420, avatarColor: '#6BCB77' },
-    { rank: 4, name: 'TurboTapper', score: 2180, avatarColor: '#4D96FF' },
-    { rank: 5, name: 'FastFingers', score: 1950, avatarColor: '#FF6B6B' },
-  ],
-  weekly: [
-    { rank: 1, name: 'LegendPlayer', score: 18500, avatarColor: '#FFD93D' },
-    { rank: 2, name: 'ChampionX', score: 17200, avatarColor: '#6BCB77' },
-    { rank: 3, name: 'ProGamer99', score: 16800, avatarColor: '#FF6B6B' },
-    { rank: 4, name: 'EliteClicker', score: 15400, avatarColor: '#4D96FF' },
-    { rank: 5, name: 'ClickMaster', score: 14200, avatarColor: '#FFD93D' },
-  ],
-  alltime: [
-    { rank: 1, name: 'TheGoat', score: 95000, avatarColor: '#FF6B6B' },
-    { rank: 2, name: 'Unstoppable', score: 87500, avatarColor: '#FFD93D' },
-    { rank: 3, name: 'LegendPlayer', score: 82000, avatarColor: '#6BCB77' },
-    { rank: 4, name: 'ProKing', score: 78000, avatarColor: '#4D96FF' },
-    { rank: 5, name: 'ChampionX', score: 74500, avatarColor: '#FF6B6B' },
-  ],
-};
-
 export function Leaderboard({ onClose }: LeaderboardProps) {
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'alltime'>('daily');
+  const [activeTab, setActiveTab] = useState<'global' | 'game'>('global');
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [gameType, setGameType] = useState<string>('all');
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, [activeTab, gameType]);
+
+  const loadLeaderboard = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let response;
+      if (activeTab === 'global') {
+        response = await leaderboardService.getGlobal(100, true);
+      } else {
+        if (gameType === 'all') {
+          response = await leaderboardService.getGlobal(100, true);
+        } else {
+          const gameTypeMap: Record<string, string> = {
+            'tug-of-war': 'tug-of-war',
+            'water-balloon': 'water-balloon',
+            'cargo-push': 'cargo-push',
+          };
+          response = await leaderboardService.getGame(gameTypeMap[gameType] || gameType, 100);
+        }
+      }
+
+      if (response.success && response.data) {
+        setLeaderboard(response.data);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Leaderboard ачаалахад алдаа гарлаа');
+      // Fallback to empty array
+      setLeaderboard([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="text-[#FFD93D]" size={32} />;
     if (rank === 2) return <Medal className="text-gray-400" size={28} />;
     if (rank === 3) return <Award className="text-[#CD7F32]" size={28} />;
-    return <div className="w-8 h-8 flex items-center justify-center text-gray-600">{rank}</div>;
+    return <div className="w-8 h-8 flex items-center justify-center text-gray-600 font-bold">{rank}</div>;
   };
 
   const getCardGradient = (rank: number) => {
@@ -54,11 +66,14 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
     return 'from-white to-gray-50';
   };
 
+  const currentPlayerId = authService.getPlayerId();
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] rounded-[2rem] p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="text-center mb-6">
           <h1
+            className="text-4xl font-bold mb-2"
             style={{
               background: 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 50%, #6BCB77 100%)',
               WebkitBackgroundClip: 'text',
@@ -69,90 +84,132 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
           </h1>
         </div>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-3 mb-4">
           <button
-            onClick={() => setActiveTab('daily')}
+            onClick={() => {
+              setActiveTab('global');
+              setGameType('all');
+            }}
             className={`
               flex-1 py-3 rounded-2xl transition-all duration-300
-              ${activeTab === 'daily' 
+              ${activeTab === 'global' 
                 ? 'bg-gradient-to-br from-[#4D96FF] to-[#3B7FE8] text-white shadow-lg scale-105' 
                 : 'bg-white text-gray-600 hover:scale-105'
               }
             `}
           >
-            Daily
+            Global
           </button>
           <button
-            onClick={() => setActiveTab('weekly')}
+            onClick={() => setActiveTab('game')}
             className={`
               flex-1 py-3 rounded-2xl transition-all duration-300
-              ${activeTab === 'weekly' 
+              ${activeTab === 'game' 
                 ? 'bg-gradient-to-br from-[#6BCB77] to-[#5BB967] text-white shadow-lg scale-105' 
                 : 'bg-white text-gray-600 hover:scale-105'
               }
             `}
           >
-            Weekly
-          </button>
-          <button
-            onClick={() => setActiveTab('alltime')}
-            className={`
-              flex-1 py-3 rounded-2xl transition-all duration-300
-              ${activeTab === 'alltime' 
-                ? 'bg-gradient-to-br from-[#FFD93D] to-[#FFC72D] text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-600 hover:scale-105'
-              }
-            `}
-          >
-            All-Time
+            Game Type
           </button>
         </div>
 
-        <div className="space-y-3">
-          {mockData[activeTab].map((entry) => (
-            <div
-              key={entry.rank}
-              className={`
-                bg-gradient-to-br ${getCardGradient(entry.rank)}
-                rounded-2xl p-4 shadow-lg
-                transform transition-all duration-300 hover:scale-105
-                flex items-center gap-4
-              `}
-              style={{
-                border: entry.rank <= 3 ? '3px solid white' : '2px solid rgba(255, 255, 255, 0.5)',
-              }}
-            >
-              <div className="flex items-center justify-center w-12">
-                {getRankIcon(entry.rank)}
-              </div>
-              
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
-                style={{
-                  background: entry.avatarColor,
-                  border: '3px solid white',
-                }}
+        {activeTab === 'game' && (
+          <div className="flex gap-2 mb-4">
+            {['all', 'tug-of-war', 'water-balloon', 'cargo-push'].map((type) => (
+              <button
+                key={type}
+                onClick={() => setGameType(type)}
+                className={`
+                  px-4 py-2 rounded-xl text-sm transition-all
+                  ${gameType === type
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                  }
+                `}
               >
-                <span className="text-white text-xl">{entry.name.charAt(0)}</span>
-              </div>
+                {type === 'all' ? 'All' : type.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
+        )}
 
-              <div className="flex-1">
-                <div className={`${entry.rank <= 3 ? 'text-white' : 'text-gray-800'}`}>
-                  {entry.name}
+        {loading && (
+          <div className="text-center py-8">
+            <div className="text-xl text-gray-600">Ачааллаж байна...</div>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && leaderboard.length === 0 && (
+          <div className="text-center py-8 text-gray-600">
+            Leaderboard хоосон байна
+          </div>
+        )}
+
+        {!loading && leaderboard.length > 0 && (
+          <div className="space-y-3">
+            {leaderboard.map((entry) => {
+              const isCurrentPlayer = entry.playerId === currentPlayerId;
+              return (
+                <div
+                  key={entry.playerId}
+                  className={`
+                    bg-gradient-to-br ${getCardGradient(entry.rank)}
+                    rounded-2xl p-4 shadow-lg
+                    transform transition-all duration-300 hover:scale-105
+                    flex items-center gap-4
+                    ${isCurrentPlayer ? 'ring-4 ring-blue-500' : ''}
+                  `}
+                  style={{
+                    border: entry.rank <= 3 ? '3px solid white' : '2px solid rgba(255, 255, 255, 0.5)',
+                  }}
+                >
+                  <div className="flex items-center justify-center w-12">
+                    {getRankIcon(entry.rank)}
+                  </div>
+                  
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
+                    style={{
+                      background: entry.avatar || '#4D96FF',
+                      border: '3px solid white',
+                    }}
+                  >
+                    <span className="text-white text-xl font-bold">
+                      {entry.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex-1">
+                    <div className={`${entry.rank <= 3 ? 'text-white' : 'text-gray-800'} font-semibold`}>
+                      {entry.username}
+                      {isCurrentPlayer && (
+                        <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    className="text-2xl font-bold"
+                    style={{
+                      color: entry.rank <= 3 ? 'white' : '#4D96FF',
+                    }}
+                  >
+                    {entry.points.toLocaleString()}
+                  </div>
                 </div>
-              </div>
-
-              <div
-                className="text-2xl"
-                style={{
-                  color: entry.rank <= 3 ? 'white' : '#4D96FF',
-                }}
-              >
-                {entry.score.toLocaleString()}
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="mt-6 flex justify-center">
           <PlayfulButton onClick={onClose} variant="danger">

@@ -13,7 +13,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["@react-three/fiber", "@react-three/drei"],
+    "types": ["@react-three/fiber", "@react-three/drei", "vite/client"],
 
     /* Linting */
     "strict": false,
