@@ -253,14 +253,32 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
   // WebSocket listeners for PvP
   useEffect(() => {
-    if (!sessionIdRef.current || !wsClient.isConnected()) return;
+    if (!sessionIdRef.current) {
+      console.log('⚠️ No sessionId, skipping WebSocket setup');
+      return;
+    }
+    
+    if (!wsClient.isConnected()) {
+      console.log('⚠️ WebSocket not connected, skipping listener setup');
+      return;
+    }
 
     const socket = wsClient.getSocket();
-    if (!socket) return;
+    if (!socket) {
+      console.log('⚠️ Socket not available');
+      return;
+    }
+
+    console.log('✅ Setting up WebSocket listeners for session:', sessionIdRef.current);
 
     // Listen for opponent's dice roll
     const handleOpponentDiceRoll = (data: { playerId: string; diceValue: number }) => {
-      if (data.playerId === playerIdRef.current) return; // Ignore own actions
+      console.log('🎲 Received dice roll event:', data, 'My playerId:', playerIdRef.current);
+      
+      if (data.playerId === playerIdRef.current) {
+        console.log('⏭️ Ignoring own dice roll');
+        return; // Ignore own actions
+      }
       
       console.log('🎲 Opponent rolled dice:', data.diceValue);
       setOpponentDice(data.diceValue);
@@ -274,12 +292,14 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     // Listen for opponent's move
     const handleOpponentMove = (data: { playerId: string; laneIndex: number; diceValue: number; newPositions: number[]; isPlayer1?: boolean }) => {
+      console.log('📦 Received move event:', data, 'My playerId:', playerIdRef.current);
+      
       if (data.playerId === playerIdRef.current) {
         console.log('⏭️ Ignoring own move');
         return; // Ignore own actions
       }
       
-      console.log('📦 Opponent moved:', data);
+      console.log('📦 Processing opponent move:', data);
       
       // The positions from opponent are already in the correct coordinate system
       // (opponent's perspective: they move in opposite direction)
@@ -297,8 +317,11 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
       const opponentIsPlayer1 = data.isPlayer1 !== undefined ? data.isPlayer1 : !isPlayer1Ref.current;
       const winPosition = opponentIsPlayer1 ? MAX_DISTANCE : -MAX_DISTANCE;
       
+      console.log('🏁 Checking win condition:', { opponentIsPlayer1, winPosition, position: data.newPositions[data.laneIndex] });
+      
       if ((opponentIsPlayer1 && data.newPositions[data.laneIndex] >= winPosition) ||
           (!opponentIsPlayer1 && data.newPositions[data.laneIndex] <= winPosition)) {
+        console.log('🏆 Opponent won!');
         scheduleTimeout(() => {
           finalizeGame('opponent', data.laneIndex);
         }, 500);
@@ -329,7 +352,8 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     // Listen for game state updates
     const handleGameState = (data: { playerId: string; state: any; timestamp?: number }) => {
-      console.log('📡 Received game state:', data);
+      console.log('📡 Received game state event:', data);
+      console.log('📡 My playerId:', playerIdRef.current, 'Event playerId:', data.playerId);
       
       // Ignore own actions
       if (data.playerId === playerIdRef.current) {
@@ -337,22 +361,30 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         return;
       }
 
+      if (!data.state) {
+        console.warn('⚠️ No state in game state event:', data);
+        return;
+      }
+
       // Handle different event types
-      if (data.state?.type === 'dice_roll') {
+      if (data.state.type === 'dice_roll') {
+        console.log('🎲 Handling dice roll event');
         handleOpponentDiceRoll({ playerId: data.playerId, diceValue: data.state.diceValue });
-      } else if (data.state?.type === 'move') {
+      } else if (data.state.type === 'move') {
+        console.log('📦 Handling move event');
         const positions = data.state.positions || data.state.newPositions || data.state.lanePositions;
         if (positions && Array.isArray(positions)) {
           handleOpponentMove({
             playerId: data.playerId,
             laneIndex: data.state.laneIndex,
             diceValue: data.state.diceValue,
-            newPositions: positions
+            newPositions: positions,
+            isPlayer1: data.state.isPlayer1
           });
         } else {
-          console.warn('⚠️ Invalid move data:', data.state);
+          console.warn('⚠️ Invalid move data - missing positions:', data.state);
         }
-      } else if (data.state?.type === 'turn_change') {
+      } else if (data.state.type === 'turn_change') {
         console.log('🔄 Turn change received:', data.state);
         setIsMyTurn(data.state.isMyTurn);
         setCurrentTurn(data.state.isMyTurn ? 'player' : 'opponent');
@@ -362,9 +394,10 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
           setMessage(`${opponentName}-ийн ээлж. Хүлээж байна...`);
         }
       } else {
+        console.warn('⚠️ Unknown event type:', data.state.type);
         // Try to handle as direct move event (fallback)
-        if (data.state?.laneIndex !== undefined && data.state?.positions) {
-          console.log('📦 Handling as direct move event');
+        if (data.state.laneIndex !== undefined && data.state.positions) {
+          console.log('📦 Handling as direct move event (fallback)');
           handleOpponentMove({
             playerId: data.playerId,
             laneIndex: data.state.laneIndex,
@@ -378,18 +411,25 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     // Listen for player joined
     const handlePlayerJoined = (data: { playerId: string; socketId: string }) => {
-      console.log('👤 Player joined:', data);
+      console.log('👤 Player joined event:', data, 'My playerId:', playerIdRef.current);
       if (data.playerId !== playerIdRef.current && !gameStarted) {
+        console.log('✅ Opponent joined, starting game');
         setGameStarted(true);
         setMessage('Тоглоом эхэлж байна...');
         // First player (player 1) starts
         if (isPlayer1Ref.current) {
+          console.log('🎮 I am player 1, starting my turn');
           scheduleTimeout(() => {
             setIsMyTurn(true);
             setCurrentTurn('player');
             setMessage('Таны ээлж. Шоо шидэж эхлээрэй.');
           }, 1000);
+        } else {
+          console.log('⏳ I am player 2, waiting for opponent');
+          setMessage('Хүлээж байна...');
         }
+      } else if (data.playerId === playerIdRef.current) {
+        console.log('👤 I joined the game');
       }
     };
 
@@ -810,10 +850,14 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     // Send dice roll to opponent via WebSocket
     if (sessionIdRef.current && playerIdRef.current) {
-      wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, {
+      const diceData = {
         type: 'dice_roll',
         diceValue: value
-      });
+      };
+      console.log('📤 Sending dice roll to opponent:', diceData);
+      wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, diceData);
+    } else {
+      console.warn('⚠️ Cannot send dice roll - missing sessionId or playerId');
     }
   };
 
@@ -849,13 +893,18 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
 
     // Send move to opponent via WebSocket
     if (sessionIdRef.current && playerIdRef.current) {
-      wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, {
+      const moveData = {
         type: 'move',
         laneIndex,
         diceValue: value,
         positions: updated,
+        newPositions: updated, // Include both for compatibility
         isPlayer1: isPlayer1Ref.current // Include player role for reference
-      });
+      };
+      console.log('📤 Sending move to opponent:', moveData);
+      wsClient.updateGameState(sessionIdRef.current, playerIdRef.current, moveData);
+    } else {
+      console.warn('⚠️ Cannot send move - missing sessionId or playerId');
     }
 
     // Win condition: Player 1 wins at +MAX_DISTANCE, Player 2 wins at -MAX_DISTANCE
@@ -925,6 +974,43 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
         <div className="grid gap-8 xl:grid-cols-[2fr_1fr]">
           {/* Board */}
           <div className="space-y-6">
+            {/* Score counters */}
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center border-2 border-indigo-300">
+                    <span className="text-indigo-700 font-bold text-lg">
+                      {lanePositions.filter(pos => isPlayer1Ref.current ? pos > 0 : pos < 0).length}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 font-medium">Таны тал</div>
+                    <div className="text-sm font-bold text-indigo-700">
+                      {lanePositions.filter(pos => isPlayer1Ref.current ? pos > 0 : pos < 0).length} хайрцаг
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex-1 mx-4">
+                  <div className="h-0.5 bg-gradient-to-r from-indigo-300 via-gray-400 to-rose-300"></div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center border-2 border-rose-300">
+                    <span className="text-rose-700 font-bold text-lg">
+                      {lanePositions.filter(pos => isPlayer1Ref.current ? pos < 0 : pos > 0).length}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 font-medium">{opponentName}-ийн тал</div>
+                    <div className="text-sm font-bold text-rose-700">
+                      {lanePositions.filter(pos => isPlayer1Ref.current ? pos < 0 : pos > 0).length} хайрцаг
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
               <div className="space-y-4">
                 {lanePositions.map((position, index) => (
@@ -939,27 +1025,35 @@ export function CargoPush({ players, onGameEnd, onHome, onLeaderboard, sessionId
                     disabled={gameOver}
                   >
                     <div className="relative h-20 bg-slate-200 rounded-xl shadow-inner overflow-hidden">
-                      <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-gray-800 -translate-x-1/2 z-20" />
-                      <div className="absolute inset-y-4 left-[15%] w-0.5 bg-slate-200" />
-                      <div className="absolute inset-y-4 right-[15%] w-0.5 bg-slate-200" />
+                      {/* Middle line - more obvious */}
+                      <div className="absolute top-0 bottom-0 left-1/2 w-2 bg-gradient-to-b from-red-600 via-gray-800 to-red-600 -translate-x-1/2 z-30 shadow-lg" />
+                      <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white -translate-x-1/2 z-31" />
+                      
+                      {/* Side markers */}
+                      <div className="absolute inset-y-4 left-[15%] w-0.5 bg-slate-300" />
+                      <div className="absolute inset-y-4 right-[15%] w-0.5 bg-slate-300" />
+                      
+                      {/* Lane number indicator */}
+                      <div className="absolute top-1 left-2 text-xs font-bold text-gray-500 z-10">
+                        {index + 1}
+                      </div>
 
                       <div
-                        className="absolute top-1/2 -translate-y-1/2 transition-all duration-300"
-              style={{
+                        className="absolute top-1/2 -translate-y-1/2 transition-all duration-300 z-20"
+                        style={{
                           left: `calc(${toPercent(position)}% - 2rem)`,
-              }}
-            >
+                        }}
+                      >
                         <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 border-4 border-white shadow-2xl flex items-center justify-center text-3xl group-hover:scale-110 group-hover:shadow-3xl transition-all duration-200">
                           📦
-            </div>
-          </div>
+                        </div>
+                      </div>
                     </div>
                   </button>
                 ))}
+              </div>
             </div>
           </div>
-
-              </div>
 
           {/* Controls */}
           <div className="space-y-6">
